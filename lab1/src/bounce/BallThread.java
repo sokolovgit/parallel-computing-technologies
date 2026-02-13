@@ -12,6 +12,7 @@ public class BallThread extends Thread {
 
     @Override
     public void run() {
+        canvas.registerBallThread(this);
         try {
             for (int i = 0; i < Config.BALL_MOVES_COUNT; i++) {
 
@@ -23,5 +24,6 @@ public class BallThread extends Thread {
         } catch (InterruptedException er) {
             er.printStackTrace();
         }
+        canvas.unregisterBallThread(this);
     }
 }

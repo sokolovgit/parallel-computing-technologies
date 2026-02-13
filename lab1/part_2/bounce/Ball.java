@@ -1,4 +1,4 @@
-package src.bounce;
+package part_2.bounce;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
@@ -23,12 +23,25 @@ public class Ball {
 
         Random rand = new Random();
 
-        if (Math.random() < 0.5) {
-            x = rand.nextInt(Math.max(1, canvas.getWidth()));
-            y = 0;
-        } else {
-            x = 0;
-            y = rand.nextInt(Math.max(1, canvas.getHeight()));
+        int w = Math.max(1, canvas.getWidth() - size);
+        int h = Math.max(1, canvas.getHeight() - size);
+        switch (rand.nextInt(4)) {
+            case 0 -> {
+                x = rand.nextInt(w);
+                y = 0;
+            }
+            case 1 -> {
+                x = rand.nextInt(w);
+                y = h;
+            }
+            case 2 -> {
+                x = 0;
+                y = rand.nextInt(h);
+            }
+            default -> {
+                x = w;
+                y = rand.nextInt(h);
+            }
         }
 
         baseColor = new Color(
@@ -91,5 +104,17 @@ public class Ball {
         }
 
         canvas.repaint();
+    }
+
+    public int getBallX() {
+        return x;
+    }
+
+    public int getBallY() {
+        return y;
+    }
+
+    public int getBallSize() {
+        return size;
     }
 }

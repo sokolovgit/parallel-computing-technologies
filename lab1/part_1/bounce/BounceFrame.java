@@ -1,4 +1,4 @@
-package src.bounce;
+package part_1.bounce;
 
 import javax.swing.*;
 import java.awt.*;

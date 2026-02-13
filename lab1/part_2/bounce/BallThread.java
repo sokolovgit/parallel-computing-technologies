@@ -1,4 +1,4 @@
-package src.bounce;
+package part_2.bounce;
 
 public class BallThread extends Thread {
 
@@ -15,11 +15,14 @@ public class BallThread extends Thread {
         canvas.registerBallThread(this);
         try {
             for (int i = 0; i < Config.BALL_MOVES_COUNT; i++) {
-
                 ball.move();
 
-                Thread.sleep(canvas.getSleepTime());
+                if (canvas.isBallInPocket(ball)) {
+                    canvas.pocketBall(ball);
+                    break;
+                }
 
+                Thread.sleep(canvas.getSleepTime());
             }
         } catch (InterruptedException er) {
             er.printStackTrace();

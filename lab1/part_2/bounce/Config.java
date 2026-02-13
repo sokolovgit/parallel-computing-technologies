@@ -1,4 +1,4 @@
-package src.bounce;
+package part_2.bounce;
 
 public class Config {
 
@@ -11,4 +11,8 @@ public class Config {
     public static final int DEFAULT_SLEEP_MS = 5;
 
     public static final int WARNING_THREAD_COUNT = 100;
+
+    public static final int POCKET_INSET = 28;
+
+    public static final int POCKET_RADIUS = 35;
 }

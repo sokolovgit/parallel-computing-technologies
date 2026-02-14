@@ -1,0 +1,32 @@
+package part_2.bounce;
+
+public class BallThread extends Thread {
+
+    private Ball ball;
+    private BallCanvas canvas;
+
+    public BallThread(Ball ball, BallCanvas canvas) {
+        this.ball = ball;
+        this.canvas = canvas;
+    }
+
+    @Override
+    public void run() {
+        canvas.registerBallThread(this);
+        try {
+            for (int i = 0; i < Config.BALL_MOVES_COUNT; i++) {
+                ball.move();
+
+                if (canvas.isBallInPocket(ball)) {
+                    canvas.pocketBall(ball);
+                    break;
+                }
+
+                Thread.sleep(canvas.getSleepTime());
+            }
+        } catch (InterruptedException er) {
+            er.printStackTrace();
+        }
+        canvas.unregisterBallThread(this);
+    }
+}

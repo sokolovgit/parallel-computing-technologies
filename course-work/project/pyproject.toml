@@ -25,6 +25,10 @@ select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
+# E402: imports after path setup needed so benchmark can import from src
+"**/benchmark/__init__.py" = ["E402"]
+"**/benchmark/__main__.py" = ["E402"]
+
 
 [tool.mypy]
 strict = true

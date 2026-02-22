@@ -21,7 +21,13 @@ from benchmark.export import (
 )
 from benchmark.models import BenchmarkResult, SystemMetrics
 from benchmark.plots import PlotGenerator
-from benchmark.stats import HAS_RESOURCE, RunStats, compute_stats, rss_mb
+from benchmark.stats import (
+    HAS_RESOURCE,
+    RunStats,
+    compute_stats,
+    filter_outliers_iqr,
+    rss_mb,
+)
 
 if TYPE_CHECKING:
     from bitonic import ParallelBitonicSorter, SequentialBitonicSorter
@@ -55,15 +61,17 @@ class BenchmarkRunner:
         self,
         sizes: list[int] | None = None,
         process_counts: list[int] | None = None,
-        num_runs: int = 5,
+        num_runs: int = 10,
         warmup_runs: int = 2,
         results_dir: Path | None = None,
         disable_gc: bool = True,
         run_baseline: bool = False,
         run_weak_scaling: bool = False,
         weak_scaling_base: int = 2**14,
+        drop_outliers: bool = False,
+        plot_formats: list[str] | None = None,
     ) -> None:
-        self._sizes = sizes or [2**k for k in range(14, 22)]
+        self._sizes = sizes or [2**k for k in range(14, 24)]
         self._process_counts = process_counts or [2, 4, 8]
         self._num_runs = num_runs
         self._warmup_runs = warmup_runs
@@ -75,6 +83,8 @@ class BenchmarkRunner:
         self._run_baseline = run_baseline
         self._run_weak_scaling = run_weak_scaling
         self._weak_scaling_base = weak_scaling_base
+        self._drop_outliers = drop_outliers
+        self._plot_formats = plot_formats if plot_formats is not None else ["png"]
 
     @staticmethod
     def _generate_array(size: int, seed: int = 42) -> NDArray[np.int64]:
@@ -89,6 +99,7 @@ class BenchmarkRunner:
         from bitonic import SequentialBitonicSorter as _Seq
 
         assert isinstance(sorter, _Seq)
+        # sort() does not mutate arr; warmup and all timed runs see the same input.
         for _ in range(self._warmup_runs):
             sorter.sort(arr)
         walls: list[float] = []
@@ -123,8 +134,12 @@ class BenchmarkRunner:
         if HAS_RESOURCE and runs_metrics and walls:
             med = statistics.median(walls)
             idx = min(range(len(walls)), key=lambda i: abs(walls[i] - med))
-            return walls, runs_metrics[idx]
-        return walls, None
+            rep_metric = runs_metrics[idx]
+        else:
+            rep_metric = None
+        if self._drop_outliers and len(walls) >= 4:
+            walls = filter_outliers_iqr(walls)
+        return walls, rep_metric
 
     def _measure_parallel(
         self,
@@ -134,6 +149,7 @@ class BenchmarkRunner:
         from bitonic import ParallelBitonicSorter as _Par
 
         assert isinstance(sorter, _Par)
+        # sort() does not mutate arr; warmup and all timed runs see the same input.
         for _ in range(self._warmup_runs):
             sorter.sort(arr)
         walls: list[float] = []
@@ -175,8 +191,12 @@ class BenchmarkRunner:
         if HAS_RESOURCE and runs_metrics and walls:
             med = statistics.median(walls)
             idx = min(range(len(walls)), key=lambda i: abs(walls[i] - med))
-            return walls, runs_metrics[idx]
-        return walls, None
+            rep_metric = runs_metrics[idx]
+        else:
+            rep_metric = None
+        if self._drop_outliers and len(walls) >= 4:
+            walls = filter_outliers_iqr(walls)
+        return walls, rep_metric
 
     def _bench_sequential(
         self,
@@ -245,6 +265,8 @@ class BenchmarkRunner:
                 walls.append(time.perf_counter() - t0)
                 if self._disable_gc:
                     gc.enable()
+            if self._drop_outliers and len(walls) >= 4:
+                walls = filter_outliers_iqr(walls)
             run_times[size] = walls
             st = compute_stats(walls)
             print(
@@ -281,6 +303,8 @@ class BenchmarkRunner:
                 walls_seq.append(time.perf_counter() - t0)
                 if self._disable_gc:
                     gc.enable()
+            if self._drop_outliers and len(walls_seq) >= 4:
+                walls_seq = filter_outliers_iqr(walls_seq)
             seq_run_times[nprocs] = walls_seq
             sorter_par = ParallelBitonicSorter(num_processes=nprocs)
             for _ in range(self._warmup_runs):
@@ -294,6 +318,8 @@ class BenchmarkRunner:
                 walls_par.append(time.perf_counter() - t0)
                 if self._disable_gc:
                     gc.enable()
+            if self._drop_outliers and len(walls_par) >= 4:
+                walls_par = filter_outliers_iqr(walls_par)
             par_run_times[nprocs] = walls_par
             st_seq = compute_stats(walls_seq)
             st_par = compute_stats(walls_par)
@@ -320,6 +346,8 @@ class BenchmarkRunner:
             print("System metrics: enabled (Unix)")
         else:
             print("System metrics: disabled (Windows or no resource module)")
+        if self._drop_outliers:
+            print("Outlier removal: IQR (1.5×) before computing stats")
         print("=" * 60)
 
         print("\n[1/6] Benchmarking sequential sort...")
@@ -372,7 +400,7 @@ class BenchmarkRunner:
             print("\n[5/6] (Skip system metrics)")
 
         print("\n[6/6] Generating plots & saving data...")
-        PlotGenerator(result).generate_all()
+        PlotGenerator(result, formats=self._plot_formats).generate_all()
         save_csv(result)
         save_latex_table(result)
         save_json(result)

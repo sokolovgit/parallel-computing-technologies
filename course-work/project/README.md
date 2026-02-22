@@ -34,7 +34,8 @@ project/
       __init__.py
       __main__.py                  # Entry: python -m benchmark
       models.py                   # BenchmarkResult, SystemMetrics
-      stats.py                    # RunStats, compute_stats
+      stats.py                    # RunStats, compute_stats, filter_outliers_iqr
+      plot_style.py               # Shared plot style, palette, size formatter
       plots.py                    # PlotGenerator
       export.py                   # CSV, JSON, LaTeX, console output
       runner.py                   # BenchmarkRunner
@@ -73,12 +74,29 @@ print(sort_result.data, sort_result.elapsed)
 just benchmark
 ```
 
-Generates three plots in `results/`:
+This runs the default benchmark (sizes 2^14–2^21, process counts 2/4/8) and writes plots and data to `results/`.
 
-- `execution_time.png` -- execution time vs input size
-- `speedup_vs_size.png` -- speedup vs input size for different process counts
-- `speedup_vs_processes.png` -- speedup vs number of processes for selected input sizes
-- `benchmark_data.json` -- raw timing data
+**Reproducibility:** Input arrays are generated with a fixed random seed (42), so repeated runs on the same machine are comparable.
+
+**CLI options** (when running `uv run python -m benchmark`):
+
+- `--num-runs N` — number of timed runs per config (default: 5, or set `BENCH_NUM_RUNS`)
+- `--warmup N` — warmup runs per config (default: 2, or set `BENCH_WARMUP_RUNS`)
+- `--drop-outliers` — remove outliers with IQR (1.5×) before computing median and CI
+- `--format png,svg,pdf` — output format(s) for plots (default: png)
+- `--baseline` — also run `np.sort` baseline comparison
+- `--weak-scaling` — also run weak scaling benchmarks
+
+**Outputs in `results/`:**
+
+- `execution_time.*` — execution time vs input size
+- `speedup_vs_size.*` — speedup vs input size per process count
+- `speedup_vs_processes.*` — speedup vs number of processes (selected sizes)
+- `efficiency.*` — parallel efficiency
+- `cpu_utilization.*` — CPU utilization (Unix only)
+- `baseline_comparison.*`, `weak_scaling.*` — when `--baseline` / `--weak-scaling` are used
+- `benchmark_data.json`, `benchmark_times.csv`, `table.tex` — raw data and LaTeX table
+
 
 ## Development
 

@@ -13,6 +13,27 @@ from typing import Any
 from benchmark.models import BenchmarkResult
 from benchmark.stats import HAS_RESOURCE
 
+# Must match bitonic.parallel._MIN_COMPARISONS_PER_WORKER for fallback detection
+_MIN_COMPARISONS_PER_WORKER = 50_000
+
+
+def _next_power_of_two(n: int) -> int:
+    if n <= 0:
+        return 1
+    p = 1
+    while p < n:
+        p <<= 1
+    return p
+
+
+def _used_parallel_fallback(nprocs: int, size: int) -> bool:
+    """True if parallel sorter uses sequential fallback for this (nprocs, size)."""
+    if nprocs <= 1:
+        return False
+    padded_n = _next_power_of_two(size)
+    cmp_per_worker = (padded_n // 2) // nprocs
+    return cmp_per_worker < _MIN_COMPARISONS_PER_WORKER
+
 
 def _metadata() -> dict[str, Any]:
     """Environment metadata for reproducibility."""
@@ -93,6 +114,12 @@ def print_bottleneck_analysis(result: BenchmarkResult) -> None:
     nprocs_list = sorted(result.parallel_metrics.keys())
     if not sizes or not nprocs_list:
         return
+    fallback_pairs = [
+        (nprocs, size)
+        for nprocs in nprocs_list
+        for size in sizes
+        if _used_parallel_fallback(nprocs, size)
+    ]
     low_util_sizes: list[int] = []
     high_ctx_sizes: list[int] = []
     for size in sizes:
@@ -106,6 +133,16 @@ def print_bottleneck_analysis(result: BenchmarkResult) -> None:
             if pm.ctx_involuntary > 1000 and size not in high_ctx_sizes:
                 high_ctx_sizes.append(size)
     observations: list[str] = []
+    if fallback_pairs:
+        pairs_str = ", ".join(
+            f"P={p} n={n:,}" for (p, n) in sorted(fallback_pairs)[:12]
+        )
+        if len(fallback_pairs) > 12:
+            pairs_str += f" (+{len(fallback_pairs) - 12} more)"
+        observations.append(
+            f"Sequential fallback used (work per worker < {_MIN_COMPARISONS_PER_WORKER:,}): {pairs_str}. "
+            "Reported 'parallel' time is single-process; use larger n for true parallel."
+        )
     if low_util_sizes:
         observations.append(
             "Low CPU utilization at small n: parallel path may use sequential "

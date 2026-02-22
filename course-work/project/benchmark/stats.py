@@ -34,6 +34,24 @@ class RunStats:
         return self.median + self.ci_half
 
 
+def filter_outliers_iqr(times: list[float], factor: float = 1.5) -> list[float]:
+    """Remove outliers using IQR; keep points in [Q1 - factor*IQR, Q3 + factor*IQR]."""
+    if len(times) < 4:
+        return list(times)
+    sorted_times = sorted(times)
+    n = len(sorted_times)
+    q1_idx = n // 4
+    q3_idx = (3 * n) // 4
+    q1 = sorted_times[q1_idx]
+    q3 = sorted_times[q3_idx]
+    iqr = q3 - q1
+    if iqr <= 0:
+        return list(times)
+    low = q1 - factor * iqr
+    high = q3 + factor * iqr
+    return [t for t in times if low <= t <= high]
+
+
 def compute_stats(times: list[float]) -> RunStats:
     """Compute median, mean, stdev, and 95% CI from a list of run times."""
     if not times:

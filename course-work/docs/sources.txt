@@ -1,0 +1,19 @@
+https://www.youtube.com/watch?v=uEfieI0MumY
+
+https://cse.buffalo.edu/faculty/miller/Courses/CSE633/Mullapudi-Spring-2014-CSE633.pdf
+https://people.cs.rutgers.edu/~venugopa/parallel_summer2012/bitonic_overview.html
+https://web.archive.org/web/20241122030200/https://www.javatpoint.com/bitonic-sort
+
+https://xlinux.nist.gov/dads/HTML/bitonicSort.html
+https://hwlang.de/algorithmen/sortieren/bitonic/bitonicen.htm
+https://www.geeksforgeeks.org/python/python-program-for-bitonic-sort/
+
+https://stackoverflow.com/questions/79143120/parallel-bitonic-sort-implementation-speedup
+https://stackoverflow.com/questions/47213007/python-3-6-bitonic-sort-with-multiprocessing-library-and-multiple-processes
+
+https://ar5iv.labs.arxiv.org/html/1506.01446#:~:text=Bitonic%20sort%20%5B3%5D%20is%20a,%F0%9D%91%9F%202%5E%7Br%7D%20.
+
+
+https://www.cs.kent.edu/~batcher/sort.pdf
+https://iitdh.ac.in/~konjengbam.anand/courses/daa/CLRS4e2022.pdf – sorting network, 789 page
+https://neo-sorting-algorithms.fandom.com/wiki/Bitonic_sort

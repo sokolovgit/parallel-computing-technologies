@@ -1,5 +1,27 @@
 example
 
 .DS_Store
+.cursor
 
 out
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# UV
+*.lock
+
+# IDE
+.idea/
+.vscode/
+
+# Benchmark results (regenerable)
+course-work/project/results/

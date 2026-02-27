@@ -1,0 +1,18 @@
+set quiet
+
+test *args:
+    uv run pytest {{ args }}
+
+lint:
+    uv run ruff check src/ tests/ benchmark/
+
+format:
+    uv run ruff format src/ tests/ benchmark/
+
+typecheck:
+    uv run mypy src/
+
+check: format lint typecheck test
+
+benchmark:
+    uv run python -m benchmark

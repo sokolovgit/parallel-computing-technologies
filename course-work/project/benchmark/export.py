@@ -50,10 +50,12 @@ def print_table(result: BenchmarkResult) -> None:
     sizes = sorted(result.sequential_times.keys())
     nprocs_list = sorted(result.parallel_times.keys())
     col_w = 14
-    header = f"{'Size':>{col_w}}" + f"{'Sequential':>{col_w}}"
+
+    # Iterative table
+    header = f"{'Size':>{col_w}}" + f"{'Seq(iter)':>{col_w}}"
     for np_ in nprocs_list:
-        header += f"{f'{np_} procs':>{col_w}}"
-    header += f"{'Best Speedup':>{col_w}}"
+        header += f"{f'Par{np_}':>{col_w}}"
+    header += f"{'Best Sp':>{col_w}}"
     sep = "-" * len(header)
     print(sep)
     print(header)

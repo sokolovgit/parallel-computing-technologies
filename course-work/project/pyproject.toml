@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Bitonic Sort algorithm and its parallel implementation in Python using multiprocessing"
 requires-python = ">=3.12"
 dependencies = [
+    "numba",
     "numpy>=2.4.2",
 ]
 
@@ -29,7 +30,6 @@ select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM"]
 "**/benchmark/__init__.py" = ["E402"]
 "**/benchmark/__main__.py" = ["E402"]
 
-
 [tool.mypy]
 strict = true
 python_version = "3.12"
@@ -39,6 +39,16 @@ mypy_path = "src"
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "bitonic.sequential"
+ignore_missing_imports = true
+disable_error_code = ["import-untyped", "untyped-decorator"]
+
+[[tool.mypy.overrides]]
+module = "bitonic.parallel"
+ignore_missing_imports = true
+disable_error_code = ["import-untyped", "untyped-decorator"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

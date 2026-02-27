@@ -33,14 +33,10 @@ from dataclasses import dataclass
 from multiprocessing.shared_memory import SharedMemory
 
 import numpy as np
+from numba import njit
 from numpy.typing import NDArray
 
 from bitonic.base import BitonicSorter
-from bitonic.sequential import _bitonic_sort_numpy_inplace
-
-# Minimum (approximate) comparisons per worker per *size* to use parallel path.
-# Below this, pool creation + barrier overhead dominates; we fall back to sequential.
-_MIN_COMPARISONS_PER_WORKER = 50_000
 
 
 @dataclass(frozen=True)
@@ -58,6 +54,24 @@ _w_shm: SharedMemory | None = None
 _w_arr: NDArray[np.int64] | None = None
 
 
+@njit
+def _bitonic_stride_core(
+    arr: np.ndarray, start: int, end: int, stride: int, size: int
+) -> None:
+    """One compare-swap stride over [start, end). No temporary arrays."""
+    for i in range(start, end):
+        partner = i ^ stride
+        if partner > i:
+            vi, vp = arr[i], arr[partner]
+            ascending = (i & size) == 0
+            if ascending:
+                if vi > vp:
+                    arr[i], arr[partner] = vp, vi
+            else:
+                if vi < vp:
+                    arr[i], arr[partner] = vp, vi
+
+
 def _pool_init(shm_name: str, n: int) -> None:
     """Attach the worker to the shared-memory block (once per process)."""
     global _w_shm, _w_arr  # noqa: PLW0603
@@ -68,7 +82,7 @@ def _pool_init(shm_name: str, n: int) -> None:
 def _pool_worker(task: _SizeTask) -> None:
     """Run all compare-swap strides for task.size on indices [task.start, task.end).
 
-    Stride = size/2, size/4, ..., 1 locally; one barrier per size (not per stride).
+    Uses scalar loop (Numba) per stride — no per-stride array allocations.
     """
     assert _w_arr is not None
     arr = _w_arr
@@ -77,18 +91,7 @@ def _pool_worker(task: _SizeTask) -> None:
 
     stride = size >> 1
     while stride > 0:
-        indices = np.arange(start_idx, end_idx, dtype=np.intp)
-        partners = indices ^ stride
-        mask = partners > indices
-        i_idx = indices[mask]
-        p_idx = partners[mask]
-        if len(i_idx) > 0:
-            vals_i = arr[i_idx].copy()
-            vals_p = arr[p_idx].copy()
-            ascending = (i_idx & size) == 0
-            swap = np.where(ascending, vals_i > vals_p, vals_i < vals_p)
-            arr[i_idx] = np.where(swap, vals_p, vals_i)
-            arr[p_idx] = np.where(swap, vals_i, vals_p)
+        _bitonic_stride_core(arr, start_idx, end_idx, stride, size)
         stride >>= 1
 
 
@@ -111,19 +114,8 @@ class ParallelBitonicSorter(BitonicSorter):
             return arr.copy()
 
         padded, n = self._prepare_padded(arr)
-        padded_n = len(padded)
 
-        # Use parallel only when work per worker per size is large enough to amortize
-        # pool creation and O(log n) barrier overhead.
-        comparisons_per_worker_per_size = (padded_n // 2) // self._num_processes
-        use_parallel = (
-            self._num_processes > 1
-            and comparisons_per_worker_per_size >= _MIN_COMPARISONS_PER_WORKER
-        )
-        if use_parallel:
-            self._sort_parallel(padded)
-        else:
-            _bitonic_sort_numpy_inplace(padded)
+        self._sort_parallel(padded)
 
         result = padded[:n].copy()
         if not ascending:

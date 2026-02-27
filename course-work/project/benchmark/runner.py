@@ -71,7 +71,7 @@ class BenchmarkRunner:
         drop_outliers: bool = False,
         plot_formats: list[str] | None = None,
     ) -> None:
-        self._sizes = sizes or [2**k for k in range(14, 24)]
+        self._sizes = sizes or [2**k for k in range(20, 25)]
         self._process_counts = process_counts or [2, 4, 8]
         self._num_runs = num_runs
         self._warmup_runs = warmup_runs
@@ -350,10 +350,10 @@ class BenchmarkRunner:
             print("Outlier removal: IQR (1.5×) before computing stats")
         print("=" * 60)
 
-        print("\n[1/6] Benchmarking sequential sort...")
+        print("\n[1/5] Benchmarking sequential (iterative) sort...")
         seq_run_times, seq_metrics = self._bench_sequential()
 
-        print("\n[2/6] Benchmarking parallel sort...")
+        print("\n[2/5] Benchmarking parallel (iterative) sort...")
         par_run_times, par_metrics = self._bench_parallel()
 
         result = BenchmarkResult(
@@ -365,20 +365,20 @@ class BenchmarkRunner:
         )
 
         if self._run_baseline:
-            print("\n[2b] Baseline (np.sort)...")
+            print("\n[3/5] Baseline (np.sort)...")
             base_run_times, base_stats = self._bench_baseline()
             result.baseline_times = {s: base_stats[s].median for s in base_run_times}
             result.baseline_stats = base_stats
 
         if self._run_weak_scaling:
-            print("\n[2c] Weak scaling...")
+            print("\n[4/5] Weak scaling...")
             _seq_rt, _par_rt, seq_st, par_st = self._bench_weak_scaling()
             result.weak_scaling_sequential_times = {p: seq_st[p].median for p in seq_st}
             result.weak_scaling_parallel_times = {p: par_st[p].median for p in par_st}
             result.weak_scaling_sequential_stats = seq_st
             result.weak_scaling_parallel_stats = par_st
 
-        print("\n[3/6] Computing speedup & efficiency...")
+        print("\n[5/5] Computing speedup & efficiency...")
         result.compute_metrics()
         for nprocs in sorted(result.speedup.keys()):
             for size in sorted(result.speedup[nprocs].keys()):
@@ -389,17 +389,17 @@ class BenchmarkRunner:
                     f"  speedup={sp:.3f}x  efficiency={eff:.3f}"
                 )
 
-        print("\n[4/6] Summary table:")
+        print("\n[6/7] Summary table:")
         print_table(result)
 
         if HAS_RESOURCE:
-            print("\n[5/6] System metrics (representative sizes):")
+            print("\n[7/7] System metrics (representative sizes):")
             print_system_metrics(result)
             print_bottleneck_analysis(result)
         else:
-            print("\n[5/6] (Skip system metrics)")
+            print("\n[7/7] (Skip system metrics)")
 
-        print("\n[6/6] Generating plots & saving data...")
+        print("\nGenerating plots & saving data...")
         PlotGenerator(result, formats=self._plot_formats).generate_all()
         save_csv(result)
         save_latex_table(result)

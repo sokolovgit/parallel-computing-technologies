@@ -1,6 +1,7 @@
-"""Sequential bitonic sort — iterative numpy (XOR-based) implementation.
+"""Sequential bitonic sort — iterative Numba JIT (XOR-based) implementation.
 
-Complexity: O(n log^2 n).
+Complexity: O(n log^2 n). Uses scalar loops and in-place compare-swap only;
+no per-iteration temporary arrays, so compute-bound rather than memory-bound.
 
 References:
     https://cse.buffalo.edu/faculty/miller/Courses/CSE633/Mullapudi-Spring-2014-CSE633.pdf
@@ -10,35 +11,42 @@ References:
 from __future__ import annotations
 
 import numpy as np
+from numba import njit
 from numpy.typing import NDArray
 
 from bitonic.base import BitonicSorter
 
 
-def _bitonic_sort_numpy_inplace(arr: NDArray[np.int64]) -> None:
-    """In-place iterative (XOR-based) bitonic sort — sequential implementation."""
-    n = len(arr)
+@njit
+def _bitonic_sort_core(arr: np.ndarray) -> None:
+    """In-place iterative (XOR-based) bitonic sort"""
+    n = arr.shape[0]
     k = 2
     while k <= n:
         j = k >> 1
         while j > 0:
-            indices = np.arange(n, dtype=np.intp)
-            partners = indices ^ j
-            mask = partners > indices
-            i_idx = indices[mask]
-            p_idx = partners[mask]
-            vals_i = arr[i_idx].copy()
-            vals_p = arr[p_idx].copy()
-            ascending = (i_idx & k) == 0
-            swap = np.where(ascending, vals_i > vals_p, vals_i < vals_p)
-            arr[i_idx] = np.where(swap, vals_p, vals_i)
-            arr[p_idx] = np.where(swap, vals_i, vals_p)
+            for i in range(n):
+                partner = i ^ j
+                if partner > i:
+                    vi, vp = arr[i], arr[partner]
+                    ascending = (i & k) == 0
+                    if ascending:
+                        if vi > vp:
+                            arr[i], arr[partner] = vp, vi
+                    else:
+                        if vi < vp:
+                            arr[i], arr[partner] = vp, vi
             j >>= 1
         k <<= 1
 
 
+def _bitonic_sort_inplace(arr: NDArray[np.int64]) -> None:
+    """Run Numba JIT bitonic sort in-place on a int64 array."""
+    _bitonic_sort_core(arr)
+
+
 class SequentialBitonicSorter(BitonicSorter):
-    """Iterative numpy bitonic sort, single process."""
+    """Iterative bitonic sort (Numba JIT), single process, memory-efficient."""
 
     def sort(
         self,
@@ -53,7 +61,7 @@ class SequentialBitonicSorter(BitonicSorter):
             return arr.copy()
 
         padded, n = self._prepare_padded(arr)
-        _bitonic_sort_numpy_inplace(padded)
+        _bitonic_sort_inplace(padded)
 
         result = padded[:n].copy()
         if not ascending:

@@ -13,12 +13,27 @@ _src = _root / "src"
 if _src.exists() and str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
+from benchmark.config import BenchmarkConfig, parse_processes, parse_sizes
 from benchmark.runner import BenchmarkRunner
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run Bitonic Sort benchmarks (sequential and parallel)."
+    )
+    parser.add_argument(
+        "--sizes",
+        type=str,
+        default=None,
+        metavar="SPEC",
+        help="Input sizes: comma-separated (e.g. 1024,8192) or range 10:20 for 2^10..2^20 (default: 10:19)",
+    )
+    parser.add_argument(
+        "--processes",
+        type=str,
+        default=None,
+        metavar="LIST",
+        help="Process counts, comma-separated (e.g. 2,4,8) (default: 2,4,8)",
     )
     parser.add_argument(
         "--num-runs",
@@ -61,6 +76,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args()
+    default = BenchmarkConfig.default()
     num_runs = args.num_runs
     if num_runs is None:
         try:
@@ -73,18 +89,28 @@ def main() -> None:
             warmup = int(os.environ.get("BENCH_WARMUP_RUNS", "2"))
         except ValueError:
             warmup = 2
+    sizes = parse_sizes(args.sizes) if args.sizes else default.sizes
+    process_counts = (
+        parse_processes(args.processes) if args.processes else default.process_counts
+    )
     formats = [f.strip().lower() for f in args.format.split(",") if f.strip()]
     if not formats:
         formats = ["png"]
 
-    runner = BenchmarkRunner(
-        num_runs=10,
+    config = BenchmarkConfig(
+        sizes=sizes,
+        process_counts=process_counts,
+        num_runs=num_runs,
         warmup_runs=warmup,
-        drop_outliers=True,
+        results_dir=default.results_dir,
+        disable_gc=default.disable_gc,
         run_baseline=args.baseline,
         run_weak_scaling=args.weak_scaling,
+        weak_scaling_base=default.weak_scaling_base,
+        drop_outliers=args.drop_outliers,
         plot_formats=formats,
     )
+    runner = BenchmarkRunner(config=config)
     runner.run()
 
 

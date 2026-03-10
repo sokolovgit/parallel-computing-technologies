@@ -13,29 +13,8 @@ from typing import Any
 from benchmark.models import BenchmarkResult
 from benchmark.stats import HAS_RESOURCE
 
-# Must match bitonic.parallel._MIN_COMPARISONS_PER_WORKER for fallback detection
-_MIN_COMPARISONS_PER_WORKER = 50_000
 
-
-def _next_power_of_two(n: int) -> int:
-    if n <= 0:
-        return 1
-    p = 1
-    while p < n:
-        p <<= 1
-    return p
-
-
-def _used_parallel_fallback(nprocs: int, size: int) -> bool:
-    """True if parallel sorter uses sequential fallback for this (nprocs, size)."""
-    if nprocs <= 1:
-        return False
-    padded_n = _next_power_of_two(size)
-    cmp_per_worker = (padded_n // 2) // nprocs
-    return cmp_per_worker < _MIN_COMPARISONS_PER_WORKER
-
-
-def _metadata() -> dict[str, Any]:
+def _json_metadata() -> dict[str, Any]:
     """Environment metadata for reproducibility."""
     return {
         "python_version": sys.version.split()[0],
@@ -51,8 +30,7 @@ def print_table(result: BenchmarkResult) -> None:
     nprocs_list = sorted(result.parallel_times.keys())
     col_w = 14
 
-    # Iterative table
-    header = f"{'Size':>{col_w}}" + f"{'Seq(iter)':>{col_w}}"
+    header = f"{'Size':>{col_w}}" + f"{'Sequential':>{col_w}}"
     for np_ in nprocs_list:
         header += f"{f'Par{np_}':>{col_w}}"
     header += f"{'Best Sp':>{col_w}}"
@@ -116,12 +94,6 @@ def print_bottleneck_analysis(result: BenchmarkResult) -> None:
     nprocs_list = sorted(result.parallel_metrics.keys())
     if not sizes or not nprocs_list:
         return
-    fallback_pairs = [
-        (nprocs, size)
-        for nprocs in nprocs_list
-        for size in sizes
-        if _used_parallel_fallback(nprocs, size)
-    ]
     low_util_sizes: list[int] = []
     high_ctx_sizes: list[int] = []
     for size in sizes:
@@ -135,24 +107,10 @@ def print_bottleneck_analysis(result: BenchmarkResult) -> None:
             if pm.ctx_involuntary > 1000 and size not in high_ctx_sizes:
                 high_ctx_sizes.append(size)
     observations: list[str] = []
-    if fallback_pairs:
-        pairs_str = ", ".join(
-            f"P={p} n={n:,}" for (p, n) in sorted(fallback_pairs)[:12]
-        )
-        if len(fallback_pairs) > 12:
-            pairs_str += f" (+{len(fallback_pairs) - 12} more)"
-        observations.append(
-            "Sequential fallback used (work per worker < "
-            f"{_MIN_COMPARISONS_PER_WORKER:,}"
-            f"): {pairs_str}. "
-            "Reported 'parallel' time is single-process; "
-            "use larger n for true parallel."
-        )
     if low_util_sizes:
         observations.append(
-            "Low CPU utilization at small n: parallel path may use sequential "
-            "fallback when work per worker is below threshold; otherwise pool "
-            "creation + barriers dominate. Use larger n for meaningful speedup."
+            "Low CPU utilization at small n: pool creation and barriers may "
+            "dominate. Use larger n for meaningful speedup."
         )
     eff_best = 0.0
     for nprocs in nprocs_list:
@@ -255,10 +213,9 @@ def save_latex_table(result: BenchmarkResult) -> None:
     print(f"  Saved {path}")
 
 
-def save_json(result: BenchmarkResult) -> None:
-    """Write full benchmark data and metadata to JSON."""
-    data: dict[str, Any] = {
-        "metadata": _metadata(),
+def _json_sequential(result: BenchmarkResult) -> dict[str, Any]:
+    """Sequential times, stats, run_times, and optional metrics."""
+    out: dict[str, Any] = {
         "sequential": {str(k): v for k, v in result.sequential_times.items()},
         "sequential_stats": {
             str(k): {
@@ -269,6 +226,22 @@ def save_json(result: BenchmarkResult) -> None:
             }
             for k, v in result.sequential_stats.items()
         },
+    }
+    if result.sequential_run_times:
+        out["sequential_run_times"] = {
+            str(k): v for k, v in result.sequential_run_times.items()
+        }
+    if HAS_RESOURCE and result.sequential_metrics:
+        out["sequential_metrics"] = {
+            str(s): (m.to_dict() if m else None)
+            for s, m in result.sequential_metrics.items()
+        }
+    return out
+
+
+def _json_parallel(result: BenchmarkResult) -> dict[str, Any]:
+    """Parallel times, stats, run_times, and optional metrics."""
+    out: dict[str, Any] = {
         "parallel": {
             str(np_): {str(s): t for s, t in st.items()}
             for np_, st in result.parallel_times.items()
@@ -285,6 +258,23 @@ def save_json(result: BenchmarkResult) -> None:
             }
             for np_, pst in result.parallel_stats.items()
         },
+    }
+    if result.parallel_run_times:
+        out["parallel_run_times"] = {
+            str(np_): {str(s): t for s, t in st.items()}
+            for np_, st in result.parallel_run_times.items()
+        }
+    if HAS_RESOURCE and result.parallel_metrics:
+        out["parallel_metrics"] = {
+            str(np_): {str(s): (m.to_dict() if m else None) for s, m in smap.items()}
+            for np_, smap in result.parallel_metrics.items()
+        }
+    return out
+
+
+def _json_derived(result: BenchmarkResult) -> dict[str, Any]:
+    """Speedup, efficiency, and CPU utilization."""
+    data: dict[str, Any] = {
         "speedup": {
             str(np_): {str(s): round(sp, 4) for s, sp in smap.items()}
             for np_, smap in result.speedup.items()
@@ -294,25 +284,6 @@ def save_json(result: BenchmarkResult) -> None:
             for np_, emap in result.efficiency.items()
         },
     }
-    if result.sequential_run_times:
-        data["sequential_run_times"] = {
-            str(k): v for k, v in result.sequential_run_times.items()
-        }
-    if result.parallel_run_times:
-        data["parallel_run_times"] = {
-            str(np_): {str(s): t for s, t in st.items()}
-            for np_, st in result.parallel_run_times.items()
-        }
-    if HAS_RESOURCE and result.sequential_metrics:
-        data["sequential_metrics"] = {
-            str(s): (m.to_dict() if m else None)
-            for s, m in result.sequential_metrics.items()
-        }
-    if HAS_RESOURCE and result.parallel_metrics:
-        data["parallel_metrics"] = {
-            str(np_): {str(s): (m.to_dict() if m else None) for s, m in smap.items()}
-            for np_, smap in result.parallel_metrics.items()
-        }
     data["cpu_utilization"] = {}
     for np_ in result.parallel_metrics:
         data["cpu_utilization"][str(np_)] = {}
@@ -320,19 +291,37 @@ def save_json(result: BenchmarkResult) -> None:
             data["cpu_utilization"][str(np_)][str(s)] = (
                 round(m.cpu_utilization(np_), 4) if m else None
             )
+    return data
+
+
+def _json_optional(result: BenchmarkResult) -> dict[str, Any]:
+    """Baseline and weak scaling when present."""
+    out: dict[str, Any] = {}
     if result.baseline_times:
-        data["baseline_times"] = {str(k): v for k, v in result.baseline_times.items()}
-        data["baseline_stats"] = {
+        out["baseline_times"] = {str(k): v for k, v in result.baseline_times.items()}
+        out["baseline_stats"] = {
             str(k): {"median": v.median, "ci_half": v.ci_half}
             for k, v in result.baseline_stats.items()
         }
     if result.weak_scaling_parallel_times:
-        data["weak_scaling_sequential_times"] = {
+        out["weak_scaling_sequential_times"] = {
             str(k): v for k, v in result.weak_scaling_sequential_times.items()
         }
-        data["weak_scaling_parallel_times"] = {
+        out["weak_scaling_parallel_times"] = {
             str(k): v for k, v in result.weak_scaling_parallel_times.items()
         }
+    return out
+
+
+def save_json(result: BenchmarkResult) -> None:
+    """Write full benchmark data and metadata to JSON."""
+    data: dict[str, Any] = {
+        "metadata": _json_metadata(),
+        **_json_sequential(result),
+        **_json_parallel(result),
+        **_json_derived(result),
+        **_json_optional(result),
+    }
     path = result.results_dir / "benchmark_data.json"
     path.write_text(json.dumps(data, indent=2))
     print(f"  Saved {path}")

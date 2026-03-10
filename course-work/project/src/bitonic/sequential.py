@@ -1,6 +1,8 @@
-"""Sequential bitonic sort — simple recursive implementation.
+"""Sequential bitonic sort — iterative implementation.
 
 Complexity: O(n log^2 n). Pure Python on list[int]; no Numba, no NumPy.
+Uses the classic iterative comparator network: for block sizes k = 2, 4, ..., n,
+merge steps with stride j = k/2, k/4, ..., 1; partner index is i XOR j.
 
 References:
     https://cse.buffalo.edu/faculty/miller/Courses/CSE633/Mullapudi-Spring-2014-CSE633.pdf
@@ -14,31 +16,32 @@ from collections.abc import Sequence
 from bitonic.base import BitonicSorter
 
 
-def _bitonic_merge(arr: list[int], low: int, n: int, ascending: bool) -> None:
-    """Merge bitonic sequence arr[low:low+n] into sorted order (in-place)."""
+def _bitonic_sort_iterative(arr: list[int], n: int) -> None:
+    """Sort arr[0:n] in-place (ascending). n must be a power of 2."""
     if n <= 1:
         return
-    half = n >> 1
-    for i in range(half):
-        a, b = low + i, low + half + i
-        if (arr[a] > arr[b]) == ascending:
-            arr[a], arr[b] = arr[b], arr[a]
-    _bitonic_merge(arr, low, half, ascending)
-    _bitonic_merge(arr, low + half, half, ascending)
-
-
-def _bitonic_sort_range(arr: list[int], low: int, n: int, ascending: bool) -> None:
-    """Sort arr[low:low+n] into a bitonic sequence and then merge to sorted."""
-    if n <= 1:
-        return
-    half = n >> 1
-    _bitonic_sort_range(arr, low, half, True)
-    _bitonic_sort_range(arr, low + half, half, False)
-    _bitonic_merge(arr, low, n, ascending)
+    k = 2
+    while k <= n:
+        j = k >> 1
+        while j >= 1:
+            for i in range(n):
+                partner = i ^ j
+                if i >= partner:
+                    continue
+                # (i & k) == 0 → ascending segment; else descending segment
+                want_asc = (i & k) == 0
+                if want_asc:
+                    if arr[i] > arr[partner]:
+                        arr[i], arr[partner] = arr[partner], arr[i]
+                else:
+                    if arr[i] < arr[partner]:
+                        arr[i], arr[partner] = arr[partner], arr[i]
+            j >>= 1
+        k <<= 1
 
 
 class SequentialBitonicSorter(BitonicSorter):
-    """Recursive bitonic sort on list[int], single process."""
+    """Iterative bitonic sort on list[int], single process."""
 
     def sort(
         self,
@@ -51,7 +54,7 @@ class SequentialBitonicSorter(BitonicSorter):
             return arr
 
         padded, n = self._prepare_padded(arr)
-        _bitonic_sort_range(padded, 0, len(padded), True)
+        _bitonic_sort_iterative(padded, len(padded))
 
         result = padded[:n]
         if not ascending:

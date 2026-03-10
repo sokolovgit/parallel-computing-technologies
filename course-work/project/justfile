@@ -14,5 +14,14 @@ typecheck:
 
 check: format lint typecheck test
 
+# Full benchmark (default CLI)
 benchmark:
     uv run python -m benchmark
+
+# Fast preset for development: few sizes, few runs, no baseline/weak-scaling
+benchmark-dev:
+    uv run python -m benchmark --sizes 14:17 --processes 2,4 --num-runs 2 --warmup 1
+
+# Full preset for report: full size range, more runs, baseline & weak-scaling, drop outliers
+benchmark-report:
+    uv run python -m benchmark --sizes 10:20 --processes 2,4,8 --num-runs 10 --warmup 2 --baseline --weak-scaling --drop-outliers

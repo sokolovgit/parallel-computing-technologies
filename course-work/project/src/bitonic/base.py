@@ -7,17 +7,15 @@ used by both sequential and parallel variants.
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
-
-import numpy as np
-from numpy.typing import NDArray
 
 
 @dataclass(frozen=True)
 class SortResult:
     """Holds the sorted array and elapsed wall-clock time."""
 
-    data: NDArray[np.int64]
+    data: list[int]
     elapsed: float
 
 
@@ -37,30 +35,30 @@ class BitonicSorter:
             p <<= 1
         return p
 
-    def _prepare_padded(self, arr: NDArray[np.int64]) -> tuple[NDArray[np.int64], int]:
+    def _prepare_padded(self, arr: list[int]) -> tuple[list[int], int]:
         """Pad to next power of two with sentinels; return (padded, original_n)."""
         n = len(arr)
+        if n == 0:
+            return [], 0
         padded_n = self._next_power_of_two(n)
         if padded_n > n:
-            sentinel = int(arr.max()) + 1
-            padded = np.concatenate(
-                [arr, np.full(padded_n - n, sentinel, dtype=np.int64)]
-            )
+            sentinel = max(arr) + 1
+            padded = list(arr) + [sentinel] * (padded_n - n)
         else:
-            padded = arr.copy()
+            padded = list(arr)
         return padded, n
 
     def sort(
         self,
-        arr: NDArray[np.int64] | list[int],
+        arr: Sequence[int] | list[int],
         ascending: bool = True,
-    ) -> NDArray[np.int64]:
-        """Sort *arr* and return a new sorted numpy array."""
+    ) -> list[int]:
+        """Sort *arr* and return a new sorted list."""
         raise NotImplementedError
 
     def sort_timed(
         self,
-        arr: NDArray[np.int64] | list[int],
+        arr: Sequence[int] | list[int],
         ascending: bool = True,
     ) -> SortResult:
         """Sort and return a ``SortResult`` with elapsed time."""

@@ -71,7 +71,7 @@ class BenchmarkRunner:
         drop_outliers: bool = False,
         plot_formats: list[str] | None = None,
     ) -> None:
-        self._sizes = sizes or [2**k for k in range(20, 25)]
+        self._sizes = sizes or [2**k for k in range(10, 20)]
         self._process_counts = process_counts or [2, 4, 8]
         self._num_runs = num_runs
         self._warmup_runs = warmup_runs

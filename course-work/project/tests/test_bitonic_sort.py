@@ -79,8 +79,8 @@ class TestSequentialBitonicSorter:
     def test_numpy_input(self):
         arr = np.array([10, 30, 11, 20], dtype=np.int64)
         result = self.sorter.sort(arr)
-        assert isinstance(result, np.ndarray)
-        assert list(result) == [10, 11, 20, 30]
+        assert isinstance(result, list)
+        assert result == [10, 11, 20, 30]
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +158,8 @@ class TestParallelBitonicSorter:
     def test_numpy_input(self):
         arr = np.array([10, 30, 11, 20], dtype=np.int64)
         result = self.sorter.sort(arr)
-        assert isinstance(result, np.ndarray)
-        assert list(result) == [10, 11, 20, 30]
+        assert isinstance(result, list)
+        assert result == [10, 11, 20, 30]
 
 
 # ---------------------------------------------------------------------------

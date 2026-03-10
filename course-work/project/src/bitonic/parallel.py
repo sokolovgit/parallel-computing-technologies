@@ -3,15 +3,14 @@
 Design (aligned with technical requirements):
 
 - Process model: fixed process pool (created once), no dynamic process creation.
-- Data sharing: multiprocessing.shared_memory + NumPy view; zero-copy, no locks.
+- Data sharing: multiprocessing.shared_memory + ctypes int64 view; zero-copy, no locks.
 - Work distribution: static partitioning by index range (start, end); each worker
   receives one chunk and computes all compare-swap pairs for that chunk locally.
-- Synchronization: one barrier per *size* (not per stride) via pool.map();
-  within each size the worker runs all strides locally, reducing IPC from
-  O(log² n) to O(log n) map calls. No locks (each (i, j) pair unique).
+- Synchronization: one barrier per stride via pool.map() so all workers
+  finish each stride before the next; required for shared-memory visibility.
+  No locks (each (i, j) pair unique per stride).
 - Memory: O(n) total; no per-stride array duplication; no O(n) task lists.
-- Parallelization unit: (start_index, end_index, size); worker runs all strides
-  for that size locally. Minimizes IPC (O(log n) map calls instead of O(log² n)).
+- Parallelization unit: (start_index, end_index, stride, size); one map per stride.
 
 Algorithm structure:
   for size in 2, 4, 8, ..., n:
@@ -28,37 +27,41 @@ References:
 
 from __future__ import annotations
 
+import atexit
+import ctypes
+import gc
 import multiprocessing as mp
+from collections.abc import Sequence
 from dataclasses import dataclass
 from multiprocessing.shared_memory import SharedMemory
-
-import numpy as np
-from numba import njit
-from numpy.typing import NDArray
 
 from bitonic.base import BitonicSorter
 
 
 @dataclass(frozen=True)
-class _SizeTask:
-    """One chunk of work for a full size (all strides for this size)."""
+class _StrideTask:
+    """One chunk of work for a single stride (one barrier per stride)."""
 
     start: int
     end: int
-    size: int  # k in bitonic: we run all strides from size/2 down to 1
+    stride: int
+    size: int
 
 
 # ── Pool-worker state (initialised once per worker process) ───────────
 
 _w_shm: SharedMemory | None = None
-_w_arr: NDArray[np.int64] | None = None
+_w_arr: ctypes.Array[ctypes.c_int64] | None = None
 
 
-@njit
 def _bitonic_stride_core(
-    arr: np.ndarray, start: int, end: int, stride: int, size: int
+    arr: ctypes.Array[ctypes.c_int64],
+    start: int,
+    end: int,
+    stride: int,
+    size: int,
 ) -> None:
-    """One compare-swap stride over [start, end). No temporary arrays."""
+    """One compare-swap stride over [start, end). Plain Python."""
     for i in range(start, end):
         partner = i ^ stride
         if partner > i:
@@ -76,23 +79,29 @@ def _pool_init(shm_name: str, n: int) -> None:
     """Attach the worker to the shared-memory block (once per process)."""
     global _w_shm, _w_arr  # noqa: PLW0603
     _w_shm = SharedMemory(name=shm_name, create=False)
-    _w_arr = np.ndarray(n, dtype=np.int64, buffer=_w_shm.buf)
+    assert _w_shm.buf is not None
+    _w_arr = (ctypes.c_int64 * n).from_buffer(_w_shm.buf)
+
+    def _release_before_exit() -> None:
+        """Release ctypes view so SharedMemory can close when worker process exits."""
+        global _w_arr, _w_shm  # noqa: PLW0603
+        _w_arr = None
+        gc.collect()
+        _w_shm = None
+
+    atexit.register(_release_before_exit)
 
 
-def _pool_worker(task: _SizeTask) -> None:
-    """Run all compare-swap strides for task.size on indices [task.start, task.end).
-
-    Uses scalar loop (Numba) per stride — no per-stride array allocations.
-    """
+def _pool_worker(task: _StrideTask) -> None:
+    """Run one compare-swap stride on indices [task.start, task.end)."""
     assert _w_arr is not None
-    arr = _w_arr
-    start_idx, end_idx = task.start, task.end
-    size = task.size
-
-    stride = size >> 1
-    while stride > 0:
-        _bitonic_stride_core(arr, start_idx, end_idx, stride, size)
-        stride >>= 1
+    _bitonic_stride_core(
+        _w_arr,
+        task.start,
+        task.end,
+        task.stride,
+        task.size,
+    )
 
 
 class ParallelBitonicSorter(BitonicSorter):
@@ -103,36 +112,33 @@ class ParallelBitonicSorter(BitonicSorter):
 
     def sort(
         self,
-        arr: NDArray[np.int64] | list[int],
+        arr: Sequence[int] | list[int],
         ascending: bool = True,
-    ) -> NDArray[np.int64]:
-        if isinstance(arr, list):
-            arr = np.asarray(arr, dtype=np.int64)
-
+    ) -> list[int]:
+        arr = list(arr)
         n = len(arr)
         if n <= 1:
-            return arr.copy()
+            return arr
 
         padded, n = self._prepare_padded(arr)
-
-        self._sort_parallel(padded)
-
-        result = padded[:n].copy()
-        if not ascending:
-            result = result[::-1].copy()
-        return result
-
-    def _sort_parallel(self, padded: NDArray[np.int64]) -> None:
-        """Shared memory, fixed pool; one barrier per size (strides batched)."""
         padded_n = len(padded)
 
-        # Allocate shared memory, copy input
-        shm = SharedMemory(create=True, size=padded.nbytes)
+        self._sort_parallel(padded, padded_n)
+
+        result = padded[:n]
+        if not ascending:
+            result = result[::-1]
+        return result
+
+    def _sort_parallel(self, padded: list[int], padded_n: int) -> None:
+        """Shared memory (ctypes view), fixed pool; one barrier per stride."""
+        nbytes = padded_n * ctypes.sizeof(ctypes.c_int64)
+        shm = SharedMemory(create=True, size=nbytes)
         try:
-            shared_arr: NDArray[np.int64] = np.ndarray(
-                padded.shape, dtype=padded.dtype, buffer=shm.buf
-            )
-            shared_arr[:] = padded
+            assert shm.buf is not None
+            shared_arr = (ctypes.c_int64 * padded_n).from_buffer(shm.buf)
+            for i, v in enumerate(padded):
+                shared_arr[i] = v
 
             chunk_size = max(1, padded_n // self._num_processes)
             with mp.Pool(
@@ -140,21 +146,27 @@ class ParallelBitonicSorter(BitonicSorter):
                 initializer=_pool_init,
                 initargs=(shm.name, padded_n),
             ) as pool:
-                # One map per size k; worker runs all strides for k (fewer barriers)
                 k = 2
                 while k <= padded_n:
-                    tasks = [
-                        _SizeTask(
-                            start=s,
-                            end=min(s + chunk_size, padded_n),
-                            size=k,
-                        )
-                        for s in range(0, padded_n, chunk_size)
-                    ]
-                    pool.map(_pool_worker, tasks)
+                    stride = k >> 1
+                    while stride > 0:
+                        tasks = [
+                            _StrideTask(
+                                start=s,
+                                end=min(s + chunk_size, padded_n),
+                                stride=stride,
+                                size=k,
+                            )
+                            for s in range(0, padded_n, chunk_size)
+                        ]
+                        pool.map(_pool_worker, tasks)
+                        stride >>= 1
                     k <<= 1
 
-            padded[:] = shared_arr
+            for i in range(padded_n):
+                padded[i] = shared_arr[i]
+            # Release ctypes view so SharedMemory can be closed (no exported pointers).
+            del shared_arr
         finally:
             shm.close()
             shm.unlink()

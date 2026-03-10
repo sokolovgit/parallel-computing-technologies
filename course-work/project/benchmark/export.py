@@ -142,8 +142,11 @@ def print_bottleneck_analysis(result: BenchmarkResult) -> None:
         if len(fallback_pairs) > 12:
             pairs_str += f" (+{len(fallback_pairs) - 12} more)"
         observations.append(
-            f"Sequential fallback used (work per worker < {_MIN_COMPARISONS_PER_WORKER:,}): {pairs_str}. "
-            "Reported 'parallel' time is single-process; use larger n for true parallel."
+            "Sequential fallback used (work per worker < "
+            f"{_MIN_COMPARISONS_PER_WORKER:,}"
+            f"): {pairs_str}. "
+            "Reported 'parallel' time is single-process; "
+            "use larger n for true parallel."
         )
     if low_util_sizes:
         observations.append(

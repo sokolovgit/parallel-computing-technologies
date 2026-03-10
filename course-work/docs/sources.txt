@@ -17,3 +17,10 @@ https://ar5iv.labs.arxiv.org/html/1506.01446#:~:text=Bitonic%20sort%20%5B3%5D%20
 https://www.cs.kent.edu/~batcher/sort.pdf
 https://iitdh.ac.in/~konjengbam.anand/courses/daa/CLRS4e2022.pdf – sorting network, 789 page
 https://neo-sorting-algorithms.fandom.com/wiki/Bitonic_sort
+
+
+https://www.geeksforgeeks.org/dsa/bitonic-sorting-network-using-parallel-computing/
+https://github.com/brianpursley/sorting-network
+
+https://arxiv.org/pdf/1506.01446 / https://arxiv.org/abs/1506.01446
+https://www.academia.edu/9383367/The_Design_and_Analysis_of_Parallel_Algorithms (page 19)

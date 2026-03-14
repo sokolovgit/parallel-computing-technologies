@@ -24,3 +24,8 @@ https://github.com/brianpursley/sorting-network
 
 https://arxiv.org/pdf/1506.01446 / https://arxiv.org/abs/1506.01446
 https://www.academia.edu/9383367/The_Design_and_Analysis_of_Parallel_Algorithms (page 19)
+
+https://users.cs.utah.edu/~hari/teaching/paralg/slides/lec06.html#/3/18
+
+https://forejune.co/cuda/sort/sort.html – iterative cude impl
+https://bpb-us-e1.wpmucdn.com/sites.gatech.edu/dist/0/4740/files/2024/10/lec11-bitonicsort.pdf (https://sites.gatech.edu/cse6220fall24/)

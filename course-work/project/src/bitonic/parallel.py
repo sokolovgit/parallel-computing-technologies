@@ -1,5 +1,9 @@
 """Parallel bitonic sort using multiprocessing with shared memory.
 
+Derived from the sequential algorithm: the sequential loop over indices i is
+split into chunks [start, end); each task runs the same compare-swap logic as
+the sequential code (see _bitonic_stride_core vs sequential._bitonic_sort_iterative).
+
 Design (aligned with technical requirements):
 
 - Process model: fixed process pool (created once), no dynamic process creation.
@@ -48,7 +52,11 @@ def _bitonic_stride_core(
     stride: int,
     size: int,
 ) -> None:
-    """One compare-swap stride over [start, end)."""
+    """One compare-swap stride over [start, end).
+
+    Same logic as sequential _bitonic_sort_iterative for one (k, j) stride;
+    only the index range is [start, end) instead of [0, n) (data-parallel split).
+    """
     arr_local = arr
     for i in range(start, end):
         partner = i ^ stride

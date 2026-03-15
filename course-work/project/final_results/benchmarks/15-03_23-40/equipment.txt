@@ -1,0 +1,192 @@
+Обладнання для тестування:
+  Платформа: macOS-15.7.3-arm64-arm-64bit
+  Кількість ядер CPU: 8
+  Python: 3.12.12
+  Дата та час: 2026-03-15T21:25:00.554125+00:00
+
+  just benchmark-report
+============================================================
+Bitonic Sort Benchmark
+Sizes:          ['16', '32', '64', '128', '256', '512', '1,024', '2,048', '4,096', '8,192', '16,384', '32,768', '65,536', '131,072', '262,144', '524,288', '1,048,576', '2,097,152', '4,194,304']
+Process counts: [2, 4, 8]
+Runs per config: 12 (2 warmup + 10 timed)
+Outlier removal: IQR (1.5×) before computing stats
+============================================================
+
+[1/2] Benchmarking sequential sort...
+  Sequential  n=      16  median=0.0000s  ±0.0000s
+  Sequential  n=      32  median=0.0000s  ±0.0000s
+  Sequential  n=      64  median=0.0001s  ±0.0000s
+  Sequential  n=     128  median=0.0002s  ±0.0000s
+  Sequential  n=     256  median=0.0006s  ±0.0000s
+  Sequential  n=     512  median=0.0016s  ±0.0000s
+  Sequential  n=   1,024  median=0.0040s  ±0.0000s
+  Sequential  n=   2,048  median=0.0099s  ±0.0001s
+  Sequential  n=   4,096  median=0.0239s  ±0.0003s
+  Sequential  n=   8,192  median=0.0556s  ±0.0004s
+  Sequential  n=  16,384  median=0.1276s  ±0.0005s
+  Sequential  n=  32,768  median=0.2894s  ±0.0003s
+  Sequential  n=  65,536  median=0.6556s  ±0.0004s
+  Sequential  n= 131,072  median=1.4737s  ±0.0011s
+  Sequential  n= 262,144  median=3.2860s  ±0.0007s
+  Sequential  n= 524,288  median=7.2769s  ±0.0038s
+  Sequential  n=1,048,576  median=16.1288s  ±0.0342s
+  Sequential  n=2,097,152  median=35.6340s  ±0.0443s
+  Sequential  n=4,194,304  median=77.8639s  ±0.0923s
+
+[2/2] Benchmarking parallel sort...
+  Parallel    n=      16  procs=2  median=0.0426s  ±0.0004s
+  Parallel    n=      32  procs=2  median=0.0426s  ±0.0002s
+  Parallel    n=      64  procs=2  median=0.0443s  ±0.0009s
+  Parallel    n=     128  procs=2  median=0.0447s  ±0.0005s
+  Parallel    n=     256  procs=2  median=0.0460s  ±0.0012s
+  Parallel    n=     512  procs=2  median=0.0483s  ±0.0006s
+  Parallel    n=   1,024  procs=2  median=0.0511s  ±0.0009s
+  Parallel    n=   2,048  procs=2  median=0.0557s  ±0.0008s
+  Parallel    n=   4,096  procs=2  median=0.0637s  ±0.0008s
+  Parallel    n=   8,192  procs=2  median=0.0840s  ±0.0004s
+  Parallel    n=  16,384  procs=2  median=0.1258s  ±0.0007s
+  Parallel    n=  32,768  procs=2  median=0.2162s  ±0.0008s
+  Parallel    n=  65,536  procs=2  median=0.4164s  ±0.0012s
+  Parallel    n= 131,072  procs=2  median=0.8602s  ±0.0018s
+  Parallel    n= 262,144  procs=2  median=1.8432s  ±0.0027s
+  Parallel    n= 524,288  procs=2  median=4.0095s  ±0.0140s
+  Parallel    n=1,048,576  procs=2  median=8.7354s  ±0.0070s
+  Parallel    n=2,097,152  procs=2  median=19.1065s  ±0.0658s
+  Parallel    n=4,194,304  procs=2  median=41.6354s  ±0.0229s
+  Parallel    n=      16  procs=4  median=0.0467s  ±0.0006s
+  Parallel    n=      32  procs=4  median=0.0481s  ±0.0008s
+  Parallel    n=      64  procs=4  median=0.0488s  ±0.0007s
+  Parallel    n=     128  procs=4  median=0.0499s  ±0.0006s
+  Parallel    n=     256  procs=4  median=0.0516s  ±0.0012s
+  Parallel    n=     512  procs=4  median=0.0532s  ±0.0007s
+  Parallel    n=   1,024  procs=4  median=0.0558s  ±0.0005s
+  Parallel    n=   2,048  procs=4  median=0.0603s  ±0.0008s
+  Parallel    n=   4,096  procs=4  median=0.0672s  ±0.0027s
+  Parallel    n=   8,192  procs=4  median=0.0787s  ±0.0005s
+  Parallel    n=  16,384  procs=4  median=0.1038s  ±0.0010s
+  Parallel    n=  32,768  procs=4  median=0.1532s  ±0.0013s
+  Parallel    n=  65,536  procs=4  median=0.2608s  ±0.0010s
+  Parallel    n= 131,072  procs=4  median=0.5115s  ±0.0038s
+  Parallel    n= 262,144  procs=4  median=1.0197s  ±0.0055s
+  Parallel    n= 524,288  procs=4  median=2.1869s  ±0.0585s
+  Parallel    n=1,048,576  procs=4  median=4.7019s  ±0.0202s
+  Parallel    n=2,097,152  procs=4  median=10.1373s  ±0.0384s
+  Parallel    n=4,194,304  procs=4  median=21.7374s  ±0.0734s
+  Parallel    n=      16  procs=8  median=0.0728s  ±0.0006s
+  Parallel    n=      32  procs=8  median=0.0714s  ±0.0017s
+  Parallel    n=      64  procs=8  median=0.0692s  ±0.0004s
+  Parallel    n=     128  procs=8  median=0.0720s  ±0.0005s
+  Parallel    n=     256  procs=8  median=0.0766s  ±0.0020s
+  Parallel    n=     512  procs=8  median=0.0761s  ±0.0016s
+  Parallel    n=   1,024  procs=8  median=0.0796s  ±0.0013s
+  Parallel    n=   2,048  procs=8  median=0.0823s  ±0.0015s
+  Parallel    n=   4,096  procs=8  median=0.0921s  ±0.0018s
+  Parallel    n=   8,192  procs=8  median=0.1031s  ±0.0013s
+  Parallel    n=  16,384  procs=8  median=0.1235s  ±0.0015s
+  Parallel    n=  32,768  procs=8  median=0.1712s  ±0.0014s
+  Parallel    n=  65,536  procs=8  median=0.2690s  ±0.0015s
+  Parallel    n= 131,072  procs=8  median=0.4858s  ±0.0021s
+  Parallel    n= 262,144  procs=8  median=0.9438s  ±0.0030s
+  Parallel    n= 524,288  procs=8  median=1.9280s  ±0.0087s
+  Parallel    n=1,048,576  procs=8  median=4.0799s  ±0.0143s
+  Parallel    n=2,097,152  procs=8  median=8.1671s  ±0.0387s
+  Parallel    n=4,194,304  procs=8  median=16.7741s  ±0.0431s
+
+Computing speedup & efficiency...
+  procs=2  n=      16  speedup=0.000x  efficiency=0.000
+  procs=2  n=      32  speedup=0.001x  efficiency=0.000
+  procs=2  n=      64  speedup=0.002x  efficiency=0.001
+  procs=2  n=     128  speedup=0.005x  efficiency=0.003
+  procs=2  n=     256  speedup=0.013x  efficiency=0.006
+  procs=2  n=     512  speedup=0.033x  efficiency=0.016
+  procs=2  n=   1,024  speedup=0.079x  efficiency=0.039
+  procs=2  n=   2,048  speedup=0.178x  efficiency=0.089
+  procs=2  n=   4,096  speedup=0.376x  efficiency=0.188
+  procs=2  n=   8,192  speedup=0.662x  efficiency=0.331
+  procs=2  n=  16,384  speedup=1.014x  efficiency=0.507
+  procs=2  n=  32,768  speedup=1.338x  efficiency=0.669
+  procs=2  n=  65,536  speedup=1.574x  efficiency=0.787
+  procs=2  n= 131,072  speedup=1.713x  efficiency=0.857
+  procs=2  n= 262,144  speedup=1.783x  efficiency=0.891
+  procs=2  n= 524,288  speedup=1.815x  efficiency=0.907
+  procs=2  n=1,048,576  speedup=1.846x  efficiency=0.923
+  procs=2  n=2,097,152  speedup=1.865x  efficiency=0.933
+  procs=2  n=4,194,304  speedup=1.870x  efficiency=0.935
+  procs=4  n=      16  speedup=0.000x  efficiency=0.000
+  procs=4  n=      32  speedup=0.001x  efficiency=0.000
+  procs=4  n=      64  speedup=0.002x  efficiency=0.000
+  procs=4  n=     128  speedup=0.005x  efficiency=0.001
+  procs=4  n=     256  speedup=0.011x  efficiency=0.003
+  procs=4  n=     512  speedup=0.030x  efficiency=0.007
+  procs=4  n=   1,024  speedup=0.072x  efficiency=0.018
+  procs=4  n=   2,048  speedup=0.165x  efficiency=0.041
+  procs=4  n=   4,096  speedup=0.356x  efficiency=0.089
+  procs=4  n=   8,192  speedup=0.706x  efficiency=0.176
+  procs=4  n=  16,384  speedup=1.229x  efficiency=0.307
+  procs=4  n=  32,768  speedup=1.889x  efficiency=0.472
+  procs=4  n=  65,536  speedup=2.514x  efficiency=0.628
+  procs=4  n= 131,072  speedup=2.881x  efficiency=0.720
+  procs=4  n= 262,144  speedup=3.222x  efficiency=0.806
+  procs=4  n= 524,288  speedup=3.328x  efficiency=0.832
+  procs=4  n=1,048,576  speedup=3.430x  efficiency=0.858
+  procs=4  n=2,097,152  speedup=3.515x  efficiency=0.879
+  procs=4  n=4,194,304  speedup=3.582x  efficiency=0.896
+  procs=8  n=      16  speedup=0.000x  efficiency=0.000
+  procs=8  n=      32  speedup=0.000x  efficiency=0.000
+  procs=8  n=      64  speedup=0.001x  efficiency=0.000
+  procs=8  n=     128  speedup=0.003x  efficiency=0.000
+  procs=8  n=     256  speedup=0.008x  efficiency=0.001
+  procs=8  n=     512  speedup=0.021x  efficiency=0.003
+  procs=8  n=   1,024  speedup=0.051x  efficiency=0.006
+  procs=8  n=   2,048  speedup=0.120x  efficiency=0.015
+  procs=8  n=   4,096  speedup=0.260x  efficiency=0.032
+  procs=8  n=   8,192  speedup=0.539x  efficiency=0.067
+  procs=8  n=  16,384  speedup=1.034x  efficiency=0.129
+  procs=8  n=  32,768  speedup=1.691x  efficiency=0.211
+  procs=8  n=  65,536  speedup=2.438x  efficiency=0.305
+  procs=8  n= 131,072  speedup=3.034x  efficiency=0.379
+  procs=8  n= 262,144  speedup=3.482x  efficiency=0.435
+  procs=8  n= 524,288  speedup=3.774x  efficiency=0.472
+  procs=8  n=1,048,576  speedup=3.953x  efficiency=0.494
+  procs=8  n=2,097,152  speedup=4.363x  efficiency=0.545
+  procs=8  n=4,194,304  speedup=4.642x  efficiency=0.580
+
+Summary table:
+------------------------------------------------------------------------------------
+          Size    Sequential          Par2          Par4          Par8       Best Sp
+------------------------------------------------------------------------------------
+            16        0.0000        0.0426        0.0467        0.0728         0.000x
+            32        0.0000        0.0426        0.0481        0.0714         0.001x
+            64        0.0001        0.0443        0.0488        0.0692         0.002x
+           128        0.0002        0.0447        0.0499        0.0720         0.005x
+           256        0.0006        0.0460        0.0516        0.0766         0.013x
+           512        0.0016        0.0483        0.0532        0.0761         0.033x
+         1,024        0.0040        0.0511        0.0558        0.0796         0.079x
+         2,048        0.0099        0.0557        0.0603        0.0823         0.178x
+         4,096        0.0239        0.0637        0.0672        0.0921         0.376x
+         8,192        0.0556        0.0840        0.0787        0.1031         0.706x
+        16,384        0.1276        0.1258        0.1038        0.1235         1.229x
+        32,768        0.2894        0.2162        0.1532        0.1712         1.889x
+        65,536        0.6556        0.4164        0.2608        0.2690         2.514x
+       131,072        1.4737        0.8602        0.5115        0.4858         3.034x
+       262,144        3.2860        1.8432        1.0197        0.9438         3.482x
+       524,288        7.2769        4.0095        2.1869        1.9280         3.774x
+     1,048,576       16.1288        8.7354        4.7019        4.0799         3.953x
+     2,097,152       35.6340       19.1065       10.1373        8.1671         4.363x
+     4,194,304       77.8639       41.6354       21.7374       16.7741         4.642x
+------------------------------------------------------------------------------------
+
+Generating plots & saving data...
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/sequential_analysis.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/execution_time.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/speedup_vs_size.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/speedup_vs_processes.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/efficiency.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/cpu_utilization.png
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/benchmark_times.csv
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/table.tex
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/benchmark_data.json
+  Saved /Users/qwertannov/Documents/kpi/3_course/2_sem/parallel-computing-technologies/course-work/project/results/equipment.txt
+
+Done!

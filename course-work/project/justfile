@@ -29,3 +29,11 @@ benchmark-report:
 # Regenerate plots from saved benchmark_data.json (path = dir or path to JSON file)
 plot-results path:
     uv run python -m benchmark.plots_from_data {{ path }}
+
+# Generate bitonic sort comparator network SVG (n = wires, power of 2; output = file or empty for stdout)
+bitonic-svg n output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --title "Bitonic sort, n={{ n }}"
+
+# Print bitonic algorithm stages as text (see the flow: k, j and compare pairs)
+bitonic-text n:
+    uv run python -m utils.sorting_network {{ n }} --text

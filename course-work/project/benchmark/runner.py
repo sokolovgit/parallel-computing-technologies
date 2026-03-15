@@ -6,7 +6,6 @@ import gc
 import statistics
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,8 +13,6 @@ from numpy.typing import NDArray
 
 from benchmark.config import BenchmarkConfig
 from benchmark.export import (
-    print_bottleneck_analysis,
-    print_system_metrics,
     print_table,
     save_csv,
     save_json,
@@ -47,7 +44,7 @@ def run_trials(
     disable_gc: bool = True,
     track_system_metrics: bool = False,
 ) -> tuple[list[float], RunStats, SystemMetrics | None]:
-    """Run warmup, then timed runs; return wall times, stats, and representative system metrics."""
+    """Run warmup, then timed runs; return wall times, stats, and optional metrics."""
     for _ in range(warmup_runs):
         fn()
     walls: list[float] = []
@@ -68,16 +65,12 @@ def run_trials(
             r1c = resource.getrusage(resource.RUSAGE_CHILDREN)
             wall = t1_wall - t0_wall
             cpu_self = t1_cpu - t0_cpu
-            cpu_children = (r1c.ru_utime + r1c.ru_stime) - (
-                r0c.ru_utime + r0c.ru_stime
-            )
+            cpu_children = (r1c.ru_utime + r1c.ru_stime) - (r0c.ru_utime + r0c.ru_stime)
             rss = rss_mb(r1.ru_maxrss)
             ctx_v = r1.ru_nvcsw - r0.ru_nvcsw
             ctx_i = r1.ru_nivcsw - r0.ru_nivcsw
             runs_metrics.append(
-                _collect_system_metrics(
-                    wall, cpu_self, cpu_children, rss, ctx_v, ctx_i
-                )
+                _collect_system_metrics(wall, cpu_self, cpu_children, rss, ctx_v, ctx_i)
             )
             walls.append(wall)
         else:
@@ -116,7 +109,7 @@ def _collect_system_metrics(
 
 
 class BenchmarkRunner:
-    """Orchestrates benchmarking with optional system metrics."""
+    """Runs sequential and parallel benchmarks and saves results."""
 
     def __init__(self, config: BenchmarkConfig | None = None) -> None:
         self._config = config or BenchmarkConfig.default()
@@ -132,7 +125,7 @@ class BenchmarkRunner:
         run_one: Callable[[], None],
         track_system_metrics: bool = False,
     ) -> tuple[list[float], RunStats, SystemMetrics | None]:
-        """Run trials and return wall times, stats, and representative system metrics."""
+        """Run trials and return wall times, stats, and optional metrics."""
         return run_trials(
             run_one,
             warmup_runs=self._config.warmup_runs,
@@ -192,9 +185,9 @@ class BenchmarkRunner:
         run_times: dict[int, dict[int, list[float]]] = {}
         metrics: dict[int, dict[int, SystemMetrics | None]] = {}
         for nprocs in self._config.process_counts:
-            sorter = ParallelBitonicSorter(num_processes=nprocs)
             run_times[nprocs] = {}
             metrics[nprocs] = {}
+            sorter = ParallelBitonicSorter(num_processes=nprocs)
             for size in self._config.sizes:
                 arr = self._generate_array(size)
                 walls, st, m = self._measure_parallel(sorter, arr)
@@ -205,65 +198,6 @@ class BenchmarkRunner:
                     f"median={st.median:.4f}s  ±{st.ci_half:.4f}s"
                 )
         return run_times, metrics
-
-    def _bench_baseline(
-        self, baseline_sizes: list[int] | None = None
-    ) -> tuple[dict[int, list[float]], dict[int, RunStats]]:
-        sizes = baseline_sizes or self._config.sizes
-        if len(sizes) > 8:
-            idx = [0, len(sizes) // 4, len(sizes) // 2, 3 * len(sizes) // 4, -1]
-            sizes = [sizes[i] for i in idx]
-        run_times: dict[int, list[float]] = {}
-        stats: dict[int, RunStats] = {}
-        for size in sizes:
-            arr = self._generate_array(size)
-            walls, st, _ = run_trials(
-                lambda a=arr: np.sort(a.copy()),
-                warmup_runs=self._config.warmup_runs,
-                num_runs=self._config.num_runs,
-                drop_outliers=self._config.drop_outliers,
-                disable_gc=self._config.disable_gc,
-                track_system_metrics=False,
-            )
-            run_times[size] = walls
-            stats[size] = st
-            print(
-                f"  Baseline np.sort  n={size:>8,}  "
-                f"median={st.median:.4f}s  ±{st.ci_half:.4f}s"
-            )
-        return run_times, stats
-
-    def _bench_weak_scaling(
-        self,
-    ) -> tuple[
-        dict[int, list[float]],
-        dict[int, list[float]],
-        dict[int, RunStats],
-        dict[int, RunStats],
-    ]:
-        from bitonic import ParallelBitonicSorter, SequentialBitonicSorter
-
-        seq_run_times: dict[int, list[float]] = {}
-        par_run_times: dict[int, list[float]] = {}
-        base = self._config.weak_scaling_base
-        for nprocs in self._config.process_counts:
-            size = nprocs * base
-            arr = self._generate_array(size)
-            seq_sorter = SequentialBitonicSorter()
-            walls_seq, _, _ = self._measure_sequential(seq_sorter, arr)
-            seq_run_times[nprocs] = walls_seq
-            par_sorter = ParallelBitonicSorter(num_processes=nprocs)
-            walls_par, _, _ = self._measure_parallel(par_sorter, arr)
-            par_run_times[nprocs] = walls_par
-            st_seq = compute_stats(walls_seq)
-            st_par = compute_stats(walls_par)
-            print(
-                f"  Weak scaling P={nprocs} n={size:,}  "
-                f"seq={st_seq.median:.4f}s  par={st_par.median:.4f}s"
-            )
-        seq_stats = {p: compute_stats(t) for p, t in seq_run_times.items()}
-        par_stats = {p: compute_stats(t) for p, t in par_run_times.items()}
-        return seq_run_times, par_run_times, seq_stats, par_stats
 
     def run(self) -> BenchmarkResult:
         """Execute the full benchmark suite."""
@@ -276,18 +210,14 @@ class BenchmarkRunner:
             f"Runs per config: {runs_per}"
             f" ({self._config.warmup_runs} warmup + {self._config.num_runs} timed)"
         )
-        if HAS_RESOURCE:
-            print("System metrics: enabled (Unix)")
-        else:
-            print("System metrics: disabled (Windows or no resource module)")
         if self._config.drop_outliers:
             print("Outlier removal: IQR (1.5×) before computing stats")
         print("=" * 60)
 
-        print("\n[1/4] Benchmarking sequential sort...")
+        print("\n[1/2] Benchmarking sequential sort...")
         seq_run_times, seq_metrics = self._bench_sequential()
 
-        print("\n[2/4] Benchmarking parallel sort...")
+        print("\n[2/2] Benchmarking parallel sort...")
         par_run_times, par_metrics = self._bench_parallel()
 
         result = BenchmarkResult(
@@ -297,20 +227,6 @@ class BenchmarkRunner:
             parallel_metrics=par_metrics,
             results_dir=self._config.results_dir,
         )
-
-        if self._config.run_baseline:
-            print("\n[3/4] Baseline (np.sort)...")
-            base_run_times, base_stats = self._bench_baseline()
-            result.baseline_times = {s: base_stats[s].median for s in base_run_times}
-            result.baseline_stats = base_stats
-
-        if self._config.run_weak_scaling:
-            print("\n[4/4] Weak scaling...")
-            _seq_rt, _par_rt, seq_st, par_st = self._bench_weak_scaling()
-            result.weak_scaling_sequential_times = {p: seq_st[p].median for p in seq_st}
-            result.weak_scaling_parallel_times = {p: par_st[p].median for p in par_st}
-            result.weak_scaling_sequential_stats = seq_st
-            result.weak_scaling_parallel_stats = par_st
 
         print("\nComputing speedup & efficiency...")
         result.compute_metrics()
@@ -325,13 +241,6 @@ class BenchmarkRunner:
 
         print("\nSummary table:")
         print_table(result)
-
-        if HAS_RESOURCE:
-            print("\nSystem metrics (representative sizes):")
-            print_system_metrics(result)
-            print_bottleneck_analysis(result)
-        else:
-            print("\n(Skip system metrics)")
 
         print("\nGenerating plots & saving data...")
         PlotGenerator(result, formats=self._config.plot_formats).generate_all()

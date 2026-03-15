@@ -26,7 +26,7 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         metavar="SPEC",
-        help="Input sizes: comma-separated (e.g. 1024,8192) or range 10:20 for 2^10..2^20 (default: 10:19)",
+        help="Sizes: comma list or range 10:20 for 2^10..2^20 (default: 10:19)",
     )
     parser.add_argument(
         "--processes",
@@ -61,16 +61,6 @@ def _parse_args() -> argparse.Namespace:
         metavar="FMT",
         help="Plot output format(s), comma-separated: png, svg, pdf (default: png)",
     )
-    parser.add_argument(
-        "--baseline",
-        action="store_true",
-        help="Also run np.sort baseline comparison",
-    )
-    parser.add_argument(
-        "--weak-scaling",
-        action="store_true",
-        help="Also run weak scaling benchmarks",
-    )
     return parser.parse_args()
 
 
@@ -104,9 +94,6 @@ def main() -> None:
         warmup_runs=warmup,
         results_dir=default.results_dir,
         disable_gc=default.disable_gc,
-        run_baseline=args.baseline,
-        run_weak_scaling=args.weak_scaling,
-        weak_scaling_base=default.weak_scaling_base,
         drop_outliers=args.drop_outliers,
         plot_formats=formats,
     )

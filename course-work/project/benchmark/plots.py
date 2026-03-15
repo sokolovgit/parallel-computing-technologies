@@ -14,6 +14,7 @@ from benchmark.plot_style import (
     color_for_sequential,
     color_for_size_index,
     format_size_axis,
+    format_time_axis,
 )
 from benchmark.stats import HAS_RESOURCE, speedup_ci_half
 
@@ -60,6 +61,7 @@ def _finish_axes(
         ax.set_xscale("log", base=2)
     if log_y:
         ax.set_yscale("log")
+        format_time_axis(ax)
     if size_axis:
         format_size_axis(ax)
     if y_min is not None:
@@ -90,7 +92,7 @@ class PlotGenerator:
         self._formats = formats if formats is not None else ["png"]
 
     def _save_fig(self, fig: plt.Figure, base_name: str) -> None:
-        """Save figure to each requested format (e.g. execution_time -> .png, .svg)."""
+        """Save figure in each requested format."""
         for ext in self._formats:
             ext = ext.lower().strip()
             if not ext.startswith("."):
@@ -110,7 +112,7 @@ class PlotGenerator:
             for s in sizes
         ]
         _add_series_ci(
-            ax, sizes, seq_meds, seq_errs, "Sequential", color_for_sequential()
+            ax, sizes, seq_meds, seq_errs, "Послідовний", color_for_sequential()
         )
         for idx, nprocs in enumerate(sorted(result.parallel_times.keys())):
             meds = [result.parallel_times[nprocs][s] for s in sizes]
@@ -125,15 +127,15 @@ class PlotGenerator:
                 sizes,
                 meds,
                 errs,
-                f"Parallel ({nprocs} procs)",
+                f"Паралельний ({nprocs} процесів)",
                 color_for_process_count(idx),
                 marker="s",
             )
         _finish_axes(
             ax,
-            "Input size (n)",
-            "Time (seconds)",
-            "Bitonic Sort: Execution Time vs Input Size (median ± 95% CI)",
+            "Розмір вхідних даних (n)",
+            "Час (сек)",
+            "Час виконання залежно від розміру вхідних даних (медіана ± 95%)",
             log_x=True,
             log_y=True,
             size_axis=True,
@@ -159,18 +161,18 @@ class PlotGenerator:
                 sizes,
                 sp_meds,
                 sp_errs,
-                f"{nprocs} processes",
+                f"{nprocs} процесів",
                 color_for_process_count(idx),
                 marker="s",
             )
         _finish_axes(
             ax,
-            "Input size (n)",
-            "Speedup (T_seq / T_par)",
-            "Bitonic Sort: Speedup vs Input Size",
+            "Розмір вхідних даних (n)",
+            "Прискорення (T_seq / T_par)",
+            "Прискорення залежно від розміру даних",
             log_x=True,
             size_axis=True,
-            ref_line=(1.0, "No speedup (baseline)"),
+            ref_line=(1.0, "Без прискорення"),
         )
         fig.tight_layout()
         self._save_fig(fig, "speedup_vs_size")
@@ -204,10 +206,10 @@ class PlotGenerator:
         ax.set_xticks(nprocs_list)
         _finish_axes(
             ax,
-            "Number of processes",
-            "Speedup (T_seq / T_par)",
-            "Bitonic Sort: Speedup vs Number of Processes",
-            ref_line=(1.0, "No speedup (baseline)"),
+            "Кількість процесів (P)",
+            "Прискорення (T_seq / T_par)",
+            "Прискорення залежно від кількості процесів",
+            ref_line=(1.0, "Без прискорення"),
         )
         fig.tight_layout()
         self._save_fig(fig, "speedup_vs_processes")
@@ -229,19 +231,19 @@ class PlotGenerator:
                 sizes,
                 eff_meds,
                 eff_errs,
-                f"{nprocs} processes",
+                f"{nprocs} процесів",
                 color_for_process_count(idx),
                 marker="s",
             )
         _finish_axes(
             ax,
-            "Input size (n)",
-            "Efficiency (Speedup / P)",
-            "Bitonic Sort: Parallel Efficiency (theoretical max = 1)",
+            "Розмір вхідних даних (n)",
+            "Ефективність (прискорення / P)",
+            "Ефективність паралелізації (теоретичний максимум = 1)",
             log_x=True,
             size_axis=True,
             y_min=0,
-            ref_line=(1.0, "Ideal (efficiency = 1)"),
+            ref_line=(1.0, "Ідеально (ефективність = 1)"),
         )
         fig.tight_layout()
         self._save_fig(fig, "efficiency")
@@ -263,168 +265,56 @@ class PlotGenerator:
                 sizes,
                 utils,
                 marker="s",
-                label=f"{nprocs} procs",
+                label=f"{nprocs} процесів",
                 linewidth=2,
                 color=color_for_process_count(idx),
             )
         _finish_axes(
             ax,
-            "Input size (n)",
-            "CPU utilization (child CPU / (wall × P))",
-            "Bitonic Sort: Parallel CPU Utilization",
+            "Розмір вхідних даних (n)",
+            "Завантаження CPU (сума CPU дочірніх процесів / (час·P))",
+            "Завантаження CPU при паралельному виконанні",
             log_x=True,
             size_axis=True,
             y_min=0,
-            ref_line=(1.0, "Ideal (util = 1)"),
+            ref_line=(1.0, "Ідеально (завантаження = 1)"),
         )
         fig.tight_layout()
         self._save_fig(fig, "cpu_utilization")
 
-    def plot_baseline_comparison(self) -> None:
+    def plot_sequential_analysis(self) -> None:
+        """Sequential runtime vs input size only (for report Section 2)."""
         result = self._result
-        if not result.baseline_times:
-            return
-        sizes = sorted(set(result.baseline_times) & set(result.sequential_times))
+        sizes = sorted(result.sequential_times.keys())
         if not sizes:
             return
         fig, ax = plt.subplots(figsize=FIG_SIZE)
-        seq_meds = [result.sequential_times.get(s, 0) for s in sizes]
+        seq_meds = [result.sequential_times[s] for s in sizes]
         seq_errs = [
             result.sequential_stats[s].ci_half if s in result.sequential_stats else 0.0
             for s in sizes
         ]
-        base_meds = [result.baseline_times[s] for s in sizes]
-        base_errs = [
-            result.baseline_stats[s].ci_half if s in result.baseline_stats else 0.0
-            for s in sizes
-        ]
-        x = range(len(sizes))
-        w = 0.35
-        ax.bar(
-            [i - w / 2 for i in x],
-            seq_meds,
-            w,
-            yerr=seq_errs,
-            label="Sequential bitonic",
-            capsize=2,
-            color=color_for_sequential(),
-        )
-        ax.bar(
-            [i + w / 2 for i in x],
-            base_meds,
-            w,
-            yerr=base_errs,
-            label="np.sort",
-            capsize=2,
-            color=color_for_process_count(0),
-        )
-        ax.set_xticks(x)
-        ax.set_xticklabels([f"{s:,}" for s in sizes])
-        ax.set_xlabel("Input size (n)")
-        ax.set_ylabel("Time (seconds)")
-        ax.set_title("Bitonic Sort: Sequential vs np.sort Baseline")
-        ax.legend(loc="best")
-        ax.grid(True, alpha=GRID_ALPHA, axis="y", linestyle="-")
-        fig.tight_layout()
-        self._save_fig(fig, "baseline_comparison")
-
-    def plot_weak_scaling(self) -> None:
-        result = self._result
-        if not result.weak_scaling_parallel_times:
-            return
-        nprocs_list = sorted(result.weak_scaling_parallel_times.keys())
-        fig, ax = plt.subplots(figsize=FIG_SIZE)
-        seq_meds = [result.weak_scaling_sequential_times.get(p, 0) for p in nprocs_list]
-        seq_errs = [
-            result.weak_scaling_sequential_stats.get(p).ci_half
-            if result.weak_scaling_sequential_stats.get(p)
-            else 0.0
-            for p in nprocs_list
-        ]
-        par_meds = [result.weak_scaling_parallel_times[p] for p in nprocs_list]
-        par_errs = [
-            result.weak_scaling_parallel_stats.get(p).ci_half
-            if result.weak_scaling_parallel_stats.get(p)
-            else 0.0
-            for p in nprocs_list
-        ]
         _add_series_ci(
-            ax,
-            nprocs_list,
-            seq_meds,
-            seq_errs,
-            "Sequential",
-            color_for_sequential(),
+            ax, sizes, seq_meds, seq_errs, "Послідовний", color_for_sequential()
         )
-        _add_series_ci(
-            ax,
-            nprocs_list,
-            par_meds,
-            par_errs,
-            "Parallel",
-            color_for_process_count(0),
-            marker="s",
-        )
-        ax.set_xticks(nprocs_list)
         _finish_axes(
             ax,
-            "Number of processes (P); n = P × base",
-            "Time (seconds)",
-            "Bitonic Sort: Weak Scaling (constant work per process)",
+            "Розмір вхідних даних (n)",
+            "Час (сек)",
+            "Послідовна реалізація: залежність часу виконання від розміру даних",
+            log_x=True,
+            log_y=True,
+            size_axis=True,
         )
         fig.tight_layout()
-        self._save_fig(fig, "weak_scaling")
-
-    def plot_strong_scaling(
-        self, highlight_sizes: list[int] | None = None
-    ) -> None:
-        """Time vs number of processes for fixed input sizes (strong scaling)."""
-        result = self._result
-        if not result.parallel_times:
-            return
-        all_sizes = sorted(result.sequential_times.keys())
-        if highlight_sizes is None:
-            highlight_sizes = [all_sizes[len(all_sizes) // 2], all_sizes[-1]]
-        nprocs_list = sorted(result.parallel_times.keys())
-        fig, ax = plt.subplots(figsize=FIG_SIZE)
-        for idx, size in enumerate(highlight_sizes):
-            if size not in result.sequential_times:
-                continue
-            meds = [result.parallel_times[np_][size] for np_ in nprocs_list]
-            errs = []
-            for np_ in nprocs_list:
-                par_st = result.parallel_stats.get(np_, {}).get(size)
-                errs.append(par_st.ci_half if par_st else 0.0)
-            _add_series_ci(
-                ax,
-                nprocs_list,
-                meds,
-                errs,
-                f"n = {size:,}",
-                color_for_size_index(idx),
-                marker="s",
-            )
-        ax.set_xticks(nprocs_list)
-        _finish_axes(
-            ax,
-            "Number of processes",
-            "Time (seconds)",
-            "Bitonic Sort: Strong Scaling (time vs P at fixed n)",
-            y_min=0,
-        )
-        fig.tight_layout()
-        self._save_fig(fig, "strong_scaling")
+        self._save_fig(fig, "sequential_analysis")
 
     def generate_all(self) -> None:
         """Generate all applicable plots."""
         apply_plot_style()
+        self.plot_sequential_analysis()
         self.plot_execution_time()
         self.plot_speedup()
         self.plot_speedup_vs_processes()
         self.plot_efficiency()
         self.plot_cpu_utilization()
-        self.plot_strong_scaling()
-        if self._result.baseline_times:
-            self.plot_baseline_comparison()
-        if self._result.weak_scaling_parallel_times:
-            self.plot_weak_scaling()

@@ -24,6 +24,21 @@ def _json_metadata() -> dict[str, Any]:
     }
 
 
+def save_equipment_file(result: BenchmarkResult) -> None:
+    """Write equipment/metadata summary for the report (обладнання)."""
+    meta = _json_metadata()
+    path = result.results_dir / "equipment.txt"
+    lines = [
+        "Обладнання для тестування:",
+        f"  Платформа: {meta['platform']}",
+        f"  Кількість ядер CPU: {meta['cpu_count']}",
+        f"  Python: {meta['python_version']}",
+        f"  Дата та час: {meta['timestamp']}",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"  Saved {path}")
+
+
 def print_table(result: BenchmarkResult) -> None:
     """Print main results as a formatted table."""
     sizes = sorted(result.sequential_times.keys())
@@ -50,94 +65,6 @@ def print_table(result: BenchmarkResult) -> None:
         row += f"{best_sp:>{col_w}.3f}x"
         print(row)
     print(sep)
-
-
-def print_system_metrics(result: BenchmarkResult) -> None:
-    """Print system metrics for a few representative sizes."""
-    if not HAS_RESOURCE:
-        print("  (System metrics: unavailable on this platform)")
-        return
-    sizes = sorted(result.sequential_times.keys())
-    if not sizes:
-        return
-    idx = [0, len(sizes) // 2, -1]
-    for i in idx:
-        size = sizes[i]
-        print(f"\n  --- n = {size:,} ---")
-        sm = result.sequential_metrics.get(size)
-        if sm:
-            print(
-                f"    Sequential: wall={sm.wall_s:.4f}s"
-                f" cpu_self={sm.cpu_self_s:.4f}s rss={sm.rss_mb:.2f}MB"
-                f" ctx_vol={sm.ctx_voluntary} ctx_inv={sm.ctx_involuntary}"
-            )
-        for nprocs in sorted(result.parallel_metrics.keys()):
-            pm = result.parallel_metrics.get(nprocs, {}).get(size)
-            if pm:
-                util = pm.cpu_utilization(nprocs)
-                print(
-                    f"    Parallel P={nprocs}: wall={pm.wall_s:.4f}s"
-                    f" cpu_children={pm.cpu_children_s:.4f}s util={util:.2%}"
-                    f" rss={pm.rss_mb:.2f}MB ctx_inv={pm.ctx_involuntary}"
-                )
-
-
-def print_bottleneck_analysis(result: BenchmarkResult) -> None:
-    """Interpret metrics and suggest bottlenecks / improvements."""
-    print("\n  --- Bottleneck analysis ---")
-    if not HAS_RESOURCE or not result.parallel_metrics:
-        print(
-            "  (No system metrics; run on Unix for CPU/memory/context-switch analysis)"
-        )
-        return
-    sizes = sorted(result.sequential_times.keys())
-    nprocs_list = sorted(result.parallel_metrics.keys())
-    if not sizes or not nprocs_list:
-        return
-    low_util_sizes: list[int] = []
-    high_ctx_sizes: list[int] = []
-    for size in sizes:
-        for nprocs in nprocs_list:
-            pm = result.parallel_metrics.get(nprocs, {}).get(size)
-            if not pm:
-                continue
-            util = pm.cpu_utilization(nprocs)
-            if util < 0.5 and size not in low_util_sizes:
-                low_util_sizes.append(size)
-            if pm.ctx_involuntary > 1000 and size not in high_ctx_sizes:
-                high_ctx_sizes.append(size)
-    observations: list[str] = []
-    if low_util_sizes:
-        observations.append(
-            "Low CPU utilization at small n: pool creation and barriers may "
-            "dominate. Use larger n for meaningful speedup."
-        )
-    eff_best = 0.0
-    for nprocs in nprocs_list:
-        for size in sizes:
-            e = result.efficiency.get(nprocs, {}).get(size, 0)
-            eff_best = max(eff_best, e)
-    if eff_best < 0.5:
-        observations.append(
-            "Efficiency below 50%: memory bandwidth or barrier overhead may "
-            "dominate. Parallel implementation uses one barrier per size (not "
-            "per stride) to limit IPC; ensure n is large enough for your P."
-        )
-    elif eff_best < 0.8:
-        observations.append(
-            "Moderate efficiency: bitonic sort is memory-bound at large n; "
-            "speedup is limited by cache/memory bus. Expect 60–70% at best."
-        )
-    if high_ctx_sizes:
-        observations.append(
-            "High involuntary context switches in some runs: possible "
-            "memory pressure or scheduler contention. Larger per-worker work "
-            "chunks may reduce switching."
-        )
-    if not observations:
-        observations.append("No strong bottleneck signals from current metrics.")
-    for i, obs in enumerate(observations, 1):
-        print(f"  {i}. {obs}")
 
 
 def save_csv(result: BenchmarkResult) -> None:
@@ -294,25 +221,6 @@ def _json_derived(result: BenchmarkResult) -> dict[str, Any]:
     return data
 
 
-def _json_optional(result: BenchmarkResult) -> dict[str, Any]:
-    """Baseline and weak scaling when present."""
-    out: dict[str, Any] = {}
-    if result.baseline_times:
-        out["baseline_times"] = {str(k): v for k, v in result.baseline_times.items()}
-        out["baseline_stats"] = {
-            str(k): {"median": v.median, "ci_half": v.ci_half}
-            for k, v in result.baseline_stats.items()
-        }
-    if result.weak_scaling_parallel_times:
-        out["weak_scaling_sequential_times"] = {
-            str(k): v for k, v in result.weak_scaling_sequential_times.items()
-        }
-        out["weak_scaling_parallel_times"] = {
-            str(k): v for k, v in result.weak_scaling_parallel_times.items()
-        }
-    return out
-
-
 def save_json(result: BenchmarkResult) -> None:
     """Write full benchmark data and metadata to JSON."""
     data: dict[str, Any] = {
@@ -320,8 +228,8 @@ def save_json(result: BenchmarkResult) -> None:
         **_json_sequential(result),
         **_json_parallel(result),
         **_json_derived(result),
-        **_json_optional(result),
     }
     path = result.results_dir / "benchmark_data.json"
     path.write_text(json.dumps(data, indent=2))
     print(f"  Saved {path}")
+    save_equipment_file(result)

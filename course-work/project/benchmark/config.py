@@ -32,9 +32,6 @@ class BenchmarkConfig:
     warmup_runs: int
     results_dir: Path
     disable_gc: bool
-    run_baseline: bool
-    run_weak_scaling: bool
-    weak_scaling_base: int
     drop_outliers: bool
     plot_formats: list[str]
 
@@ -49,9 +46,6 @@ class BenchmarkConfig:
             warmup_runs=2,
             results_dir=results_dir or base,
             disable_gc=True,
-            run_baseline=False,
-            run_weak_scaling=False,
-            weak_scaling_base=2**14,
             drop_outliers=False,
             plot_formats=["png"],
         )

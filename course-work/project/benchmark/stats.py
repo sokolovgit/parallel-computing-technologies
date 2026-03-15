@@ -7,7 +7,6 @@ import statistics
 import sys
 from dataclasses import dataclass
 
-# Optional: system metrics (Unix only)
 try:
     import resource
 

@@ -6,16 +6,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 # Colorblind-friendly palette: sequential first, then parallel process counts
-# (same index = same "variant" across plots)
 PALETTE = [
-    "#0173B2",  # blue (sequential)
-    "#E64B35",  # red
-    "#029E73",  # green
-    "#DE8F05",  # orange
-    "#CC78BC",  # purple
-    "#CA9161",  # brown
-    "#FBAFE4",  # pink
-    "#949494",  # gray
+    "#0173B2",
+    "#E64B35",
+    "#029E73",
+    "#DE8F05",
+    "#CC78BC",
+    "#CA9161",
+    "#FBAFE4",
+    "#949494",
 ]
 FIG_SIZE = (10, 6.5)
 DPI = 200
@@ -25,8 +24,8 @@ GRID_ALPHA = 0.4
 def apply_plot_style() -> None:
     """Set matplotlib rcParams for readable, consistent benchmark plots."""
     plt.rcParams["font.family"] = "sans-serif"
-    plt.rcParams["font.size"] = 10
-    plt.rcParams["axes.titlesize"] = 12
+    plt.rcParams["font.size"] = 11
+    plt.rcParams["axes.titlesize"] = 13
     plt.rcParams["axes.labelsize"] = 11
     plt.rcParams["xtick.labelsize"] = 10
     plt.rcParams["ytick.labelsize"] = 10
@@ -69,3 +68,22 @@ class SizeFormatter(mticker.ScalarFormatter):
         if n >= 1_000:
             return f"{n // 1_000}K"
         return str(n)
+
+
+def format_time_axis(ax: plt.Axes) -> None:
+    """Format y-axis (time in seconds) without 10^k notation: 0.01, 0.1, 1, 10, …"""
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(_time_tick_label))
+
+
+def _time_tick_label(x: float, pos: int | None) -> str:
+    if x <= 0:
+        return "0"
+    if x >= 100:
+        return f"{int(round(x))}"
+    if x >= 1:
+        return f"{x:.1f}".rstrip("0").rstrip(".")
+    if x >= 0.1:
+        return f"{x:.2f}".rstrip("0").rstrip(".")
+    if x >= 0.01:
+        return f"{x:.3f}".rstrip("0").rstrip(".")
+    return f"{x:.4f}".rstrip("0").rstrip(".")

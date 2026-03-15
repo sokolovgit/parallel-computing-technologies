@@ -1,5 +1,6 @@
 import argparse
 import sys
+from pathlib import Path
 
 from .bitonic import bitonic_stages, build_bitonic_network
 from .svg import render_svg
@@ -31,23 +32,33 @@ def main() -> int:
         action="store_true",
         help="Print algorithm stages as text (no SVG)",
     )
+    parser.add_argument(
+        "--processes",
+        "-p",
+        type=int,
+        default=0,
+        metavar="P",
+        help="Show work distribution over P processes (colors in SVG, P0/P1 in text)",
+    )
     args = parser.parse_args()
 
     n = args.n
     title = args.title or f"Bitonic sort, n={n}"
+    processes = args.processes if args.processes > 0 else None
 
     if args.text:
         stages = bitonic_stages(n)
-        print(format_stages(stages, n, title=title))
+        print(format_stages(stages, n, title=title, processes=processes))
         return 0
 
     network = build_bitonic_network(n)
     stages = bitonic_stages(n)
-    svg = render_svg(network, title=title, stages=stages)
+    svg = render_svg(network, title=title, stages=stages, processes=processes)
 
     if args.output:
-        with open(args.output, "w") as f:
-            f.write(svg)
+        out = Path(args.output)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(svg, encoding="utf-8")
     else:
         print(svg)
     return 0

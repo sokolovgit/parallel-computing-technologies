@@ -1,7 +1,19 @@
 from __future__ import annotations
 
+from .bitonic import make_chunks, process_for_index
 from .comparator import Comparator
 from .network import ComparisonNetwork
+
+_PROCESS_COLORS = (
+    "#2563eb",  # blue
+    "#dc2626",  # red
+    "#16a34a",  # green
+    "#ca8a04",  # amber
+    "#9333ea",  # purple
+    "#0891b2",  # cyan
+    "#ea580c",  # orange
+    "#4f46e5",  # indigo
+)
 
 _X_SCALE = 105
 _X_SCALE_THIN = 35
@@ -82,10 +94,13 @@ def render_svg(
     network: ComparisonNetwork,
     title: str | None = None,
     stages: list[tuple[int, int, list[Comparator]]] | None = None,
+    processes: int | None = None,
 ) -> str:
     n_wires = network.get_max_input() + 1
     title_h = 32 if title else 0
     r = _DOT_RADIUS
+    chunks = make_chunks(n_wires, processes) if processes and processes > 0 else None
+    by_process: dict[int, list[str]] = {} if chunks else None
 
     if stages:
         w, h, stage_layouts = _layout_by_stages(stages, n_wires)
@@ -101,12 +116,17 @@ def render_svg(
                 f"font-family='system-ui,sans-serif' font-size='{_STAGE_FONT_SIZE}' "
                 f"fill='{_LABEL_FILL}'>{label}</text>"
             )
-            for _c, cx, y1, y2 in layout:
+            for c, cx, y1, y2 in layout:
                 y1t, y2t = y1 + wire_y, y2 + wire_y
-                parts.append(
+                d = (
                     f"M{cx - r} {y1t}a{r} {r} 0 1 1 {r * 2} 0a{r} {r} 0 1 1-{r * 2} 0z"
                     f"m{r} 0V{y2t}m-{r} 0a{r} {r} 0 1 1 {r * 2} 0a{r} {r} 0 1 1-{r * 2} 0z"
                 )
+                if by_process is not None and chunks:
+                    p = process_for_index(c.i1, chunks)
+                    by_process.setdefault(p, []).append(d)
+                else:
+                    parts.append(d)
     else:
         w, h, layout = _layout(network)
         vb_w = w
@@ -121,7 +141,23 @@ def render_svg(
             )
         stage_labels = []
 
-    comparators_d = "".join(parts)
+    if by_process:
+        comparator_paths = "".join(
+            f"<path style='stroke:{_PROCESS_COLORS[p % len(_PROCESS_COLORS)]};"
+            f"stroke-width:{_COMPARATOR_WIDTH};fill:{_PROCESS_COLORS[p % len(_PROCESS_COLORS)]}' "
+            f"d='{''.join(by_process[p])}'/>"
+            for p in sorted(by_process)
+        )
+        legend_h = 28
+        vb_h += legend_h
+    else:
+        comparators_d = "".join(parts)
+        comparator_paths = (
+            f"<path style='stroke:{_COMPARATOR_STROKE};stroke-width:{_COMPARATOR_WIDTH};"
+            f"fill:{_COMPARATOR_FILL}' d='{comparators_d}'/>"
+        )
+        legend_h = 0
+
     lines_d = "".join(
         f"M0 {wire_y + (i + 1) * _Y_SCALE}H{vb_w}" for i in range(n_wires)
     )
@@ -140,6 +176,20 @@ def render_svg(
         )
     stage_labels_svg = "".join(stage_labels)
 
+    legend_svg = ""
+    if by_process and chunks:
+        legend_y = vb_h - legend_h + 18
+        step = vb_w / (len(chunks) + 1)
+        for p in range(len(chunks)):
+            x = step * (p + 1)
+            col = _PROCESS_COLORS[p % len(_PROCESS_COLORS)]
+            legend_svg += (
+                f"<circle cx='{x - 20}' cy='{legend_y - 6}' r='6' fill='{col}'/>"
+                f"<text x='{x}' y='{legend_y}' text-anchor='start' "
+                f"font-family='system-ui,sans-serif' font-size='14' "
+                f"fill='{_LABEL_FILL}'>P{p}</text>"
+            )
+
     out_w = vb_w / _SCALE_OUTPUT
     out_h = vb_h / _SCALE_OUTPUT
 
@@ -153,8 +203,8 @@ def render_svg(
         f"{stage_labels_svg}"
         f"<path style='stroke:{_WIRE_STROKE};stroke-width:{_WIRE_WIDTH};fill:none' "
         f"d='{lines_d}'/>"
-        f"<path style='stroke:{_COMPARATOR_STROKE};stroke-width:{_COMPARATOR_WIDTH};"
-        f"fill:{_COMPARATOR_FILL}' d='{comparators_d}'/>"
+        f"{comparator_paths}"
         f"{wire_labels}"
+        f"{legend_svg}"
         "</svg>"
     )

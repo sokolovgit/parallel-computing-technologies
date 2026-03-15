@@ -37,3 +37,11 @@ bitonic-svg n output="":
 # Print bitonic algorithm stages as text (see the flow: k, j and compare pairs)
 bitonic-text n:
     uv run python -m utils.sorting_network {{ n }} --text
+
+# Bitonic diagram with process colors (P = number of processes)
+bitonic-svg-parallel n P output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --processes {{ P }}
+
+# Bitonic stages as text with process assignment (P0/P1/... per stage)
+bitonic-text-parallel n P:
+    uv run python -m utils.sorting_network {{ n }} --text --processes {{ P }}

@@ -48,3 +48,22 @@ def build_bitonic_network(n: int) -> ComparisonNetwork:
     for c in bitonic_comparators(n):
         net.append(c)
     return net
+
+
+def make_chunks(n: int, num_processes: int) -> list[tuple[int, int]]:
+    """Same as parallel._make_chunks: (start, end) per process covering [0, n)."""
+    chunk_size = max(1, n // num_processes)
+    chunks: list[tuple[int, int]] = []
+    for p in range(num_processes):
+        start = p * chunk_size
+        end = n if p == num_processes - 1 else (p + 1) * chunk_size
+        chunks.append((start, end))
+    return chunks
+
+
+def process_for_index(i: int, chunks: list[tuple[int, int]]) -> int:
+    """Process that owns index i (the one that runs compare-swap for i)."""
+    for p, (start, end) in enumerate(chunks):
+        if start <= i < end:
+            return p
+    return 0

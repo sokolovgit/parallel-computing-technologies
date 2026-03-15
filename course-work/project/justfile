@@ -22,6 +22,10 @@ benchmark:
 benchmark-dev:
     uv run python -m benchmark --sizes 14:17 --processes 2,4 --num-runs 2 --warmup 1
 
-# Full preset for report: full size range, more runs, baseline & weak-scaling, drop outliers
+# Full preset for report: full size range, more runs, drop outliers
 benchmark-report:
-    uv run python -m benchmark --sizes 10:20 --processes 2,4,8 --num-runs 10 --warmup 2 --baseline --weak-scaling --drop-outliers
+    uv run python -m benchmark --sizes 4:22 --processes 2,4,8 --num-runs 10 --warmup 2 --drop-outliers
+
+# Regenerate plots from saved benchmark_data.json (path = dir or path to JSON file)
+plot-results path:
+    uv run python -m benchmark.plots_from_data {{ path }}

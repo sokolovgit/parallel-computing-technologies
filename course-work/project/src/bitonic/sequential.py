@@ -1,10 +1,10 @@
 """Sequential bitonic sort — iterative implementation.
 
-Complexity: O(n log^2 n). Pure Python; no Numba, no NumPy.
+Complexity: O(n log^2 n).
 Uses the classic iterative comparator network: for block sizes k = 2, 4, ..., n,
 merge steps with stride j = k/2, k/4, ..., 1; partner index is i XOR j.
 
-Optimizations (no NumPy/Numba): array.array('q') for compact storage and better
+Optimizations: array.array('q') for compact storage and better
 cache behavior; single local reference in the inner loop to reduce lookups.
 
 References:

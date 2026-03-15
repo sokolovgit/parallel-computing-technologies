@@ -143,6 +143,12 @@ class TestParallelBitonicSorter:
         arr = [10, 30, 11, 20, 4, 330, 21, 110]
         assert list(sorter.sort(arr)) == sorted(arr)
 
+    def test_more_processes_than_elements(self):
+        """Process count > n is clamped; no invalid chunks (start > end)."""
+        sorter = ParallelBitonicSorter(num_processes=16)
+        arr = [3, 1, 4, 2]
+        assert list(sorter.sort(arr)) == sorted(arr)
+
     def test_large_random(self):
         random.seed(42)
         arr = [random.randint(-10000, 10000) for _ in range(1024)]

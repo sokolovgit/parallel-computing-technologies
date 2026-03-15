@@ -26,16 +26,13 @@ def _bitonic_sort_iterative(arr: list[int], n: int) -> None:
         while j >= 1:
             for i in range(n):
                 partner = i ^ j
-                if i >= partner:
+                if partner <= i:
                     continue
                 # (i & k) == 0 → ascending segment; else descending segment
                 want_asc = (i & k) == 0
-                if want_asc:
-                    if arr[i] > arr[partner]:
-                        arr[i], arr[partner] = arr[partner], arr[i]
-                else:
-                    if arr[i] < arr[partner]:
-                        arr[i], arr[partner] = arr[partner], arr[i]
+                ai, ap = arr[i], arr[partner]
+                if (ai > ap) == want_asc:
+                    arr[i], arr[partner] = ap, ai
             j >>= 1
         k <<= 1
 
@@ -48,7 +45,8 @@ class SequentialBitonicSorter(BitonicSorter):
         arr: Sequence[int] | list[int],
         ascending: bool = True,
     ) -> list[int]:
-        arr = list(arr)
+        if not isinstance(arr, list):
+            arr = list(arr)
         n = len(arr)
         if n <= 1:
             return arr

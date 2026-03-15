@@ -8,7 +8,7 @@ Design (aligned with technical requirements):
   receives one chunk and computes all compare-swap pairs for that chunk locally.
 - Synchronization: one barrier per stride via pool.map() so all workers
   finish each stride before the next; required for shared-memory visibility.
-  No locks (each (i, j) pair unique per stride).
+- No locks (each (i, j) pair unique per stride).
 - Memory: O(n) total; no per-stride array duplication; no O(n) task lists.
 - Parallelization unit: (start_index, end_index, stride, size); one map per stride.
 
@@ -32,24 +32,11 @@ import ctypes
 import gc
 import multiprocessing as mp
 from collections.abc import Sequence
-from dataclasses import dataclass
 from multiprocessing.shared_memory import SharedMemory
 
 from bitonic.base import BitonicSorter
 
-
-@dataclass(frozen=True)
-class _StrideTask:
-    """One chunk of work for a single stride (one barrier per stride)."""
-
-    start: int
-    end: int
-    stride: int
-    size: int
-
-
-# ── Pool-worker state (initialised once per worker process) ───────────
-
+# Pool-worker state (initialised once per worker process)
 _w_shm: SharedMemory | None = None
 _w_arr: ctypes.Array[ctypes.c_int64] | None = None
 
@@ -61,30 +48,30 @@ def _bitonic_stride_core(
     stride: int,
     size: int,
 ) -> None:
-    """One compare-swap stride over [start, end). Plain Python."""
+    """One compare-swap stride over [start, end)."""
+    arr_local = arr
     for i in range(start, end):
         partner = i ^ stride
-        if partner > i:
-            vi, vp = arr[i], arr[partner]
-            ascending = (i & size) == 0
-            if ascending:
-                if vi > vp:
-                    arr[i], arr[partner] = vp, vi
-            else:
-                if vi < vp:
-                    arr[i], arr[partner] = vp, vi
+        if partner <= i:
+            continue
+        vi = arr_local[i]
+        vp = arr_local[partner]
+        if (vi > vp) == ((i & size) == 0):
+            arr_local[i], arr_local[partner] = vp, vi
 
 
 def _pool_init(shm_name: str, n: int) -> None:
-    """Attach the worker to the shared-memory block (once per process)."""
-    global _w_shm, _w_arr  # noqa: PLW0603
+    """Attach the worker to the shared-memory block (once per process).
+    atexit ensures we drop the ctypes view before SharedMemory.__del__ runs
+    (avoids BufferError: cannot close exported pointers exist).
+    """
+    global _w_shm, _w_arr
     _w_shm = SharedMemory(name=shm_name, create=False)
     assert _w_shm.buf is not None
     _w_arr = (ctypes.c_int64 * n).from_buffer(_w_shm.buf)
 
     def _release_before_exit() -> None:
-        """Release ctypes view so SharedMemory can close when worker process exits."""
-        global _w_arr, _w_shm  # noqa: PLW0603
+        global _w_arr, _w_shm
         _w_arr = None
         gc.collect()
         _w_shm = None
@@ -92,16 +79,22 @@ def _pool_init(shm_name: str, n: int) -> None:
     atexit.register(_release_before_exit)
 
 
-def _pool_worker(task: _StrideTask) -> None:
-    """Run one compare-swap stride on indices [task.start, task.end)."""
+def _pool_worker(task: tuple[int, int, int, int]) -> None:
+    """Run one compare-swap stride. task = (start, end, stride, size)."""
     assert _w_arr is not None
-    _bitonic_stride_core(
-        _w_arr,
-        task.start,
-        task.end,
-        task.stride,
-        task.size,
-    )
+    start, end, stride, size = task
+    _bitonic_stride_core(_w_arr, start, end, stride, size)
+
+
+def _make_chunks(padded_n: int, num_processes: int) -> list[tuple[int, int]]:
+    """Exactly num_processes (start, end) chunks covering [0, padded_n)."""
+    chunk_size = max(1, padded_n // num_processes)
+    chunks: list[tuple[int, int]] = []
+    for p in range(num_processes):
+        start = p * chunk_size
+        end = padded_n if p == num_processes - 1 else (p + 1) * chunk_size
+        chunks.append((start, end))
+    return chunks
 
 
 class ParallelBitonicSorter(BitonicSorter):
@@ -115,7 +108,8 @@ class ParallelBitonicSorter(BitonicSorter):
         arr: Sequence[int] | list[int],
         ascending: bool = True,
     ) -> list[int]:
-        arr = list(arr)
+        if not isinstance(arr, list):
+            arr = list(arr)
         n = len(arr)
         if n <= 1:
             return arr
@@ -140,32 +134,27 @@ class ParallelBitonicSorter(BitonicSorter):
             for i, v in enumerate(padded):
                 shared_arr[i] = v
 
-            chunk_size = max(1, padded_n // self._num_processes)
-            with mp.Pool(
-                self._num_processes,
+            num_workers = min(self._num_processes, padded_n)
+            chunks = _make_chunks(padded_n, num_workers)
+            pool = mp.Pool(
+                num_workers,
                 initializer=_pool_init,
                 initargs=(shm.name, padded_n),
-            ) as pool:
+            )
+            try:
                 k = 2
                 while k <= padded_n:
                     stride = k >> 1
                     while stride > 0:
-                        tasks = [
-                            _StrideTask(
-                                start=s,
-                                end=min(s + chunk_size, padded_n),
-                                stride=stride,
-                                size=k,
-                            )
-                            for s in range(0, padded_n, chunk_size)
-                        ]
+                        tasks = [(start, end, stride, k) for start, end in chunks]
                         pool.map(_pool_worker, tasks)
                         stride >>= 1
                     k <<= 1
+            finally:
+                pool.close()
+                pool.join()
 
-            for i in range(padded_n):
-                padded[i] = shared_arr[i]
-            # Release ctypes view so SharedMemory can be closed (no exported pointers).
+            padded[:] = shared_arr[:]
             del shared_arr
         finally:
             shm.close()

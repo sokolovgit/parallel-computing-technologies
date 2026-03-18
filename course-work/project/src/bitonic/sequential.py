@@ -20,8 +20,8 @@ from collections.abc import Sequence
 from bitonic.base import BitonicSorter
 
 
-def _bitonic_sort_iterative(buf: array | list[int], n: int) -> None:
-    """Sort buf[0:n] in-place (ascending). n must be a power of 2."""
+def _bitonic_sort_iterative(arr: array | list[int], n: int) -> None:
+    """Sort arr[0:n] in-place (ascending). n must be a power of 2."""
     if n <= 1:
         return
 
@@ -29,7 +29,7 @@ def _bitonic_sort_iterative(buf: array | list[int], n: int) -> None:
     while k <= n:
         j = k >> 1
         while j >= 1:
-            a = buf
+            a = arr
             for i in range(n):
                 partner = i ^ j
                 if partner <= i:
@@ -58,11 +58,11 @@ class SequentialBitonicSorter(BitonicSorter):
             return arr
 
         padded, n = self._prepare_padded(arr)
-        work = array("q", padded)
+        arr = array("q", padded)
 
-        _bitonic_sort_iterative(work, len(work))
+        _bitonic_sort_iterative(arr, len(arr))
 
-        result = list(work[:n])
+        result = list(arr[:n])
         if not ascending:
             result = result[::-1]
 

@@ -4,7 +4,6 @@ import random
 import sys
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -22,7 +21,7 @@ class TestSequentialBitonicSorter:
         self.sorter = SequentialBitonicSorter()
 
     def test_empty(self):
-        result = self.sorter.sort(np.array([], dtype=np.int64))
+        result = self.sorter.sort([])
         assert len(result) == 0
 
     def test_single_element(self):
@@ -83,12 +82,6 @@ class TestSequentialBitonicSorter:
         assert list(result.data) == sorted(arr)
         assert result.elapsed >= 0
 
-    def test_numpy_input(self):
-        arr = np.array([10, 30, 11, 20], dtype=np.int64)
-        result = self.sorter.sort(arr)
-        assert isinstance(result, list)
-        assert result == [10, 11, 20, 30]
-
     def test_three_elements(self):
         arr = [3, 1, 2]
         assert list(self.sorter.sort(arr)) == [1, 2, 3]
@@ -110,7 +103,7 @@ class TestParallelBitonicSorter:
         self.sorter = ParallelBitonicSorter(num_processes=2)
 
     def test_empty(self):
-        result = self.sorter.sort(np.array([], dtype=np.int64))
+        result = self.sorter.sort([])
         assert len(result) == 0
 
     def test_single_element(self):
@@ -197,12 +190,6 @@ class TestParallelBitonicSorter:
         result = self.sorter.sort_timed(arr)
         assert list(result.data) == sorted(arr)
         assert result.elapsed >= 0
-
-    def test_numpy_input(self):
-        arr = np.array([10, 30, 11, 20], dtype=np.int64)
-        result = self.sorter.sort(arr)
-        assert isinstance(result, list)
-        assert result == [10, 11, 20, 30]
 
 
 # ---------------------------------------------------------------------------

@@ -40,7 +40,8 @@ project/
       export.py                   # CSV, JSON, LaTeX, console output
       runner.py                   # BenchmarkRunner
   tests/
-    test_bitonic_sort.py           # Correctness tests (36 tests)
+    test_bitonic_sort.py           # Fast correctness tests
+    test_bitonic_sort_large.py     # Slow tests for 512K-1M elements
   results/                         # Generated benchmark plots and data
 ```
 
@@ -104,6 +105,12 @@ This runs the default benchmark (sizes 2^14–2^21, process counts 2/4/8) and wr
 
 ```bash
 just test
+```
+
+Large-array correctness tests are separated into a dedicated command because they take noticeably longer to finish:
+
+```bash
+just test-large
 ```
 
 ### Linting

@@ -1,7 +1,22 @@
 set quiet
 
 test *args:
-    uv run pytest {{ args }}
+    uv run pytest -m "not slow" {{ args }}
+
+test-sequential *args:
+    uv run pytest -m "not slow" tests/test_bitonic_sort.py::TestSequentialBitonicSorter {{ args }}
+
+test-parallel *args:
+    uv run pytest -m "not slow" tests/test_bitonic_sort.py::TestParallelBitonicSorter {{ args }}
+
+test-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py {{ args }}
+
+test-sequential-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py::TestLargeSequentialBitonicSorter {{ args }}
+
+test-parallel-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py::TestLargeParallelBitonicSorter {{ args }}
 
 lint:
     uv run ruff check src/ tests/ benchmark/

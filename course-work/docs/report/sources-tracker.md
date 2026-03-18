@@ -111,15 +111,31 @@
 
 ### D01. Python `multiprocessing`
 
-- Статус: `додати пізніше`
+- Статус: `використати`
 - Тип: офіційна документація
+- URL: `https://docs.python.org/3/library/multiprocessing.html`
 - Навіщо: для розділу 3 і розділу 4.
 
 ### D02. Python `multiprocessing.shared_memory`
 
-- Статус: `додати пізніше`
+- Статус: `використати`
 - Тип: офіційна документація
+- URL: `https://docs.python.org/3/library/multiprocessing.shared_memory.html`
 - Навіщо: для опису поточної технічної реалізації.
+
+### D03. Python `threading`
+
+- Статус: `використати`
+- Тип: офіційна документація
+- URL: `https://docs.python.org/3/library/threading.html`
+- Навіщо: для короткого порівняння з процесною моделлю та пояснення обмежень для CPU-bound задач.
+
+### D04. Python `concurrent.futures`
+
+- Статус: `використати`
+- Тип: офіційна документація
+- URL: `https://docs.python.org/3/library/concurrent.futures.html`
+- Навіщо: для огляду альтернативного високорівневого інтерфейсу організації паралельних задач у Python.
 
 ## Не використовувати у фінальному списку літератури
 

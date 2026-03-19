@@ -107,6 +107,14 @@
 - Навіщо: приклад практичної CUDA-реалізації bitonic sort, обговорення kernel launches, shared memory і block-level оптимізацій.
 - Коментар: джерело корисне для огляду відомих паралельних реалізацій, але не варто робити його основним теоретичним джерелом, оскільки воно орієнтоване на GPU і має неідеальну базу посилань.
 
+### A12. Grama et al. Introduction to Parallel Computing (Algorithm 9.1)
+
+- Статус: `використати`
+- Тип: книга (фрагмент із розділом/алгоритмом)
+- Джерело: `course-work/docs/materials/Introduction to Parallel Computing, Second Edition-Ananth Grama, Anshul Gupta, George Karypis, Vipin Kumar-391-405.pdf`
+- Навіщо: псевдокод паралельної формалізації bitonic sort на гіперкубі (Algorithm 9.1), а також оцінка кількості кроків та часу виконання `O(log^2 n)`.
+- Де може знадобитись: підрозділ `4.1`, опис логіки паралельних compare-exchange операцій і асимптотики.
+
 ## Офіційна документація, яку ще варто добрати
 
 ### D01. Python `multiprocessing`

@@ -40,6 +40,11 @@ def main() -> int:
         metavar="P",
         help="Show work distribution over P processes (colors in SVG, P0/P1 in text)",
     )
+    parser.add_argument(
+        "--highlight-independent",
+        action="store_true",
+        help="Highlight each stage as an independent parallel phase in SVG output",
+    )
     args = parser.parse_args()
 
     n = args.n
@@ -53,7 +58,13 @@ def main() -> int:
 
     network = build_bitonic_network(n)
     stages = bitonic_stages(n)
-    svg = render_svg(network, title=title, stages=stages, processes=processes)
+    svg = render_svg(
+        network,
+        title=title,
+        stages=stages,
+        processes=processes,
+        highlight_independent=args.highlight_independent,
+    )
 
     if args.output:
         out = Path(args.output)

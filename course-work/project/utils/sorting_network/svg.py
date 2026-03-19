@@ -95,6 +95,7 @@ def render_svg(
     title: str | None = None,
     stages: list[tuple[int, int, list[Comparator]]] | None = None,
     processes: int | None = None,
+    highlight_independent: bool = False,
 ) -> str:
     n_wires = network.get_max_input() + 1
     title_h = 32 if title else 0
@@ -110,7 +111,33 @@ def render_svg(
 
         parts: list[str] = []
         stage_labels: list[str] = []
+        stage_boxes: list[str] = []
+        barrier_labels: list[str] = []
+        stage_notes: list[str] = []
         for label, label_x, layout in stage_layouts:
+            if highlight_independent and layout:
+                left = min(cx for _c, cx, _y1, _y2 in layout) - (_X_SCALE_THIN * 0.65)
+                right = max(cx for _c, cx, _y1, _y2 in layout) + (_X_SCALE_THIN * 0.65)
+                width = right - left
+                stage_boxes.append(
+                    f"<rect x='{left}' y='{wire_y + 34}' width='{width}' "
+                    f"height='{h - 44}' rx='8' fill='#eef6ff' "
+                    f"stroke='#93c5fd' stroke-width='1.5'/>"
+                )
+                stage_notes.append(
+                    f"<text x='{label_x}' y='{wire_y + h + 18}' text-anchor='middle' "
+                    f"font-family='system-ui,sans-serif' font-size='13' "
+                    f"fill='#2563eb'>parallel phase</text>"
+                )
+                barrier_x = right + (_STAGE_GAP / 2)
+                barrier_labels.append(
+                    f"<line x1='{barrier_x}' y1='{wire_y + 42}' x2='{barrier_x}' "
+                    f"y2='{wire_y + h - 12}' stroke='#f59e0b' stroke-width='1.5' "
+                    f"stroke-dasharray='6 4'/>"
+                    f"<text x='{barrier_x + 6}' y='{wire_y + 58}' "
+                    f"font-family='system-ui,sans-serif' font-size='12' "
+                    f"fill='#b45309'>sync</text>"
+                )
             stage_labels.append(
                 f"<text x='{label_x}' y='{wire_y + 20}' text-anchor='middle' "
                 f"font-family='system-ui,sans-serif' font-size='{_STAGE_FONT_SIZE}' "
@@ -133,6 +160,9 @@ def render_svg(
         vb_h = title_h + h + (_Y_SCALE * 0.5)
         wire_y = title_h
         parts = []
+        stage_boxes = []
+        barrier_labels = []
+        stage_notes = []
         for _c, cx, y1, y2 in layout:
             y1t, y2t = y1 + title_h, y2 + title_h
             parts.append(
@@ -190,6 +220,16 @@ def render_svg(
                 f"fill='{_LABEL_FILL}'>P{p}</text>"
             )
 
+    explanatory_note = ""
+    if highlight_independent and stages:
+        explanatory_note = (
+            f"<text x='{vb_w / 2}' y='{vb_h + 20}' text-anchor='middle' "
+            f"font-family='system-ui,sans-serif' font-size='14' fill='#4b5563'>"
+            "Shaded columns are independent compare-swap phases; synchronization is required before the next column."
+            "</text>"
+        )
+        vb_h += 34
+
     out_w = vb_w / _SCALE_OUTPUT
     out_h = vb_h / _SCALE_OUTPUT
 
@@ -200,11 +240,15 @@ def render_svg(
         "xmlns='http://www.w3.org/2000/svg'>"
         f"<rect width='{vb_w}' height='{vb_h}' fill='{_BACKGROUND}'/>"
         f"{title_svg}"
+        f"{''.join(stage_boxes)}"
         f"{stage_labels_svg}"
         f"<path style='stroke:{_WIRE_STROKE};stroke-width:{_WIRE_WIDTH};fill:none' "
         f"d='{lines_d}'/>"
         f"{comparator_paths}"
         f"{wire_labels}"
+        f"{''.join(barrier_labels)}"
+        f"{''.join(stage_notes)}"
         f"{legend_svg}"
+        f"{explanatory_note}"
         "</svg>"
     )

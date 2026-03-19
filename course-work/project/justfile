@@ -49,6 +49,10 @@ plot-results path:
 bitonic-svg n output="":
     uv run python -m utils.sorting_network {{ n }} {{ output }} --title "Bitonic sort, n={{ n }}"
 
+# Bitonic diagram with highlighted independent columns/stages
+bitonic-svg-independent n output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --title "Bitonic sort, n={{ n }}" --highlight-independent
+
 # Print bitonic algorithm stages as text (see the flow: k, j and compare pairs)
 bitonic-text n:
     uv run python -m utils.sorting_network {{ n }} --text

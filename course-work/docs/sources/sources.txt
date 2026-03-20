@@ -1,0 +1,34 @@
+https://www.youtube.com/watch?v=uEfieI0MumY
+
+https://cse.buffalo.edu/faculty/miller/Courses/CSE633/Mullapudi-Spring-2014-CSE633.pdf
+https://people.cs.rutgers.edu/~venugopa/parallel_summer2012/bitonic_overview.html
+https://web.archive.org/web/20241122030200/https://www.javatpoint.com/bitonic-sort
+
+https://xlinux.nist.gov/dads/HTML/bitonicSort.html
+https://hwlang.de/algorithmen/sortieren/bitonic/bitonicen.htm
+https://www.geeksforgeeks.org/python/python-program-for-bitonic-sort/
+
+https://stackoverflow.com/questions/79143120/parallel-bitonic-sort-implementation-speedup
+https://stackoverflow.com/questions/47213007/python-3-6-bitonic-sort-with-multiprocessing-library-and-multiple-processes
+
+https://ar5iv.labs.arxiv.org/html/1506.01446#:~:text=Bitonic%20sort%20%5B3%5D%20is%20a,%F0%9D%91%9F%202%5E%7Br%7D%20.
+
+
+https://www.cs.kent.edu/~batcher/sort.pdf
+https://iitdh.ac.in/~konjengbam.anand/courses/daa/CLRS4e2022.pdf – sorting network, 789 page
+https://neo-sorting-algorithms.fandom.com/wiki/Bitonic_sort
+
+
+https://www.geeksforgeeks.org/dsa/bitonic-sorting-network-using-parallel-computing/
+https://github.com/brianpursley/sorting-network
+
+https://arxiv.org/pdf/1506.01446 / https://arxiv.org/abs/1506.01446
+https://www.academia.edu/9383367/The_Design_and_Analysis_of_Parallel_Algorithms (page 19)
+
+https://users.cs.utah.edu/~hari/teaching/paralg/slides/lec06.html#/3/18
+
+https://forejune.co/cuda/sort/sort.html – iterative cude impl
+https://bpb-us-e1.wpmucdn.com/sites.gatech.edu/dist/0/4740/files/2024/10/lec11-bitonicsort.pdf (https://sites.gatech.edu/cse6220fall24/)
+
+https://sortingalgos.miraheze.org/wiki/Bitonic_Sort#:~:text=Bitonic%20sort%20is%20as%20follows,to%20sort%20in%20decreasing%20order).
+https://stevedower.id.au/papers/bitonic_sort_2012.pdf

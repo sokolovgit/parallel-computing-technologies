@@ -1,0 +1,66 @@
+set quiet
+
+test *args:
+    uv run pytest -m "not slow" {{ args }}
+
+test-sequential *args:
+    uv run pytest -m "not slow" tests/test_bitonic_sort.py::TestSequentialBitonicSorter {{ args }}
+
+test-parallel *args:
+    uv run pytest -m "not slow" tests/test_bitonic_sort.py::TestParallelBitonicSorter {{ args }}
+
+test-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py {{ args }}
+
+test-sequential-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py::TestLargeSequentialBitonicSorter {{ args }}
+
+test-parallel-large *args:
+    uv run pytest -m slow tests/test_bitonic_sort_large.py::TestLargeParallelBitonicSorter {{ args }}
+
+lint:
+    uv run ruff check src/ tests/ benchmark/
+
+format:
+    uv run ruff format src/ tests/ benchmark/
+
+typecheck:
+    uv run mypy src/
+
+check: format lint typecheck test
+
+# Full benchmark (default CLI)
+benchmark:
+    uv run python -m benchmark
+
+# Fast preset for development: few sizes, few runs, no baseline/weak-scaling
+benchmark-dev:
+    uv run python -m benchmark --sizes 14:17 --processes 2,4 --num-runs 2 --warmup 1
+
+# Full preset for report: full size range, more runs, drop outliers
+benchmark-report:
+    uv run python -m benchmark --sizes 4:22 --processes 2,4,8 --num-runs 10 --warmup 2 --drop-outliers
+
+# Regenerate plots from saved benchmark_data.json (path = dir or path to JSON file)
+plot-results path:
+    uv run python -m benchmark.plots_from_data {{ path }}
+
+# Generate bitonic sort comparator network SVG (n = wires, power of 2; output = file or empty for stdout)
+bitonic-svg n output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --title "Bitonic sort, n={{ n }}"
+
+# Bitonic diagram with highlighted independent columns/stages
+bitonic-svg-independent n output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --title "Bitonic sort, n={{ n }}" --highlight-independent
+
+# Print bitonic algorithm stages as text (see the flow: k, j and compare pairs)
+bitonic-text n:
+    uv run python -m utils.sorting_network {{ n }} --text
+
+# Bitonic diagram with process colors (P = number of processes)
+bitonic-svg-parallel n P output="":
+    uv run python -m utils.sorting_network {{ n }} {{ output }} --processes {{ P }}
+
+# Bitonic stages as text with process assignment (P0/P1/... per stage)
+bitonic-text-parallel n P:
+    uv run python -m utils.sorting_network {{ n }} --text --processes {{ P }}

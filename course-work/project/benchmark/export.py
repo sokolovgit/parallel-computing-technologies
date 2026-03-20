@@ -1,5 +1,3 @@
-"""Export benchmark results to CSV, JSON, LaTeX and console."""
-
 from __future__ import annotations
 
 import csv
@@ -15,7 +13,6 @@ from benchmark.stats import HAS_RESOURCE
 
 
 def _json_metadata() -> dict[str, Any]:
-    """Environment metadata for reproducibility."""
     return {
         "python_version": sys.version.split()[0],
         "cpu_count": mp.cpu_count(),
@@ -25,7 +22,6 @@ def _json_metadata() -> dict[str, Any]:
 
 
 def save_equipment_file(result: BenchmarkResult) -> None:
-    """Write equipment/metadata summary for the report (обладнання)."""
     meta = _json_metadata()
     path = result.results_dir / "equipment.txt"
     lines = [
@@ -40,7 +36,6 @@ def save_equipment_file(result: BenchmarkResult) -> None:
 
 
 def print_table(result: BenchmarkResult) -> None:
-    """Print main results as a formatted table."""
     sizes = sorted(result.sequential_times.keys())
     nprocs_list = sorted(result.parallel_times.keys())
     col_w = 14
@@ -68,7 +63,6 @@ def print_table(result: BenchmarkResult) -> None:
 
 
 def save_csv(result: BenchmarkResult) -> None:
-    """Write main results table to CSV."""
     sizes = sorted(result.sequential_times.keys())
     nprocs_list = sorted(result.parallel_times.keys())
     path = result.results_dir / "benchmark_times.csv"
@@ -111,7 +105,6 @@ def save_csv(result: BenchmarkResult) -> None:
 
 
 def save_latex_table(result: BenchmarkResult) -> None:
-    """Export a summary table as LaTeX for the report."""
     sizes = sorted(result.sequential_times.keys())
     nprocs_list = sorted(result.parallel_times.keys())
     path = result.results_dir / "table.tex"
@@ -141,7 +134,6 @@ def save_latex_table(result: BenchmarkResult) -> None:
 
 
 def _json_sequential(result: BenchmarkResult) -> dict[str, Any]:
-    """Sequential times, stats, run_times, and optional metrics."""
     out: dict[str, Any] = {
         "sequential": {str(k): v for k, v in result.sequential_times.items()},
         "sequential_stats": {
@@ -167,7 +159,6 @@ def _json_sequential(result: BenchmarkResult) -> dict[str, Any]:
 
 
 def _json_parallel(result: BenchmarkResult) -> dict[str, Any]:
-    """Parallel times, stats, run_times, and optional metrics."""
     out: dict[str, Any] = {
         "parallel": {
             str(np_): {str(s): t for s, t in st.items()}
@@ -200,7 +191,6 @@ def _json_parallel(result: BenchmarkResult) -> dict[str, Any]:
 
 
 def _json_derived(result: BenchmarkResult) -> dict[str, Any]:
-    """Speedup, efficiency, and CPU utilization."""
     data: dict[str, Any] = {
         "speedup": {
             str(np_): {str(s): round(sp, 4) for s, sp in smap.items()}
@@ -222,7 +212,6 @@ def _json_derived(result: BenchmarkResult) -> dict[str, Any]:
 
 
 def save_json(result: BenchmarkResult) -> None:
-    """Write full benchmark data and metadata to JSON."""
     data: dict[str, Any] = {
         "metadata": _json_metadata(),
         **_json_sequential(result),

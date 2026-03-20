@@ -1,5 +1,3 @@
-"""Load BenchmarkResult from saved benchmark_data.json."""
-
 from __future__ import annotations
 
 import json
@@ -31,11 +29,6 @@ def _system_metrics_from_dict(d: dict[str, Any]) -> SystemMetrics:
 
 
 def load_benchmark_result(path: Path) -> BenchmarkResult:
-    """
-    Load benchmark data from JSON and return a BenchmarkResult.
-
-    path: path to benchmark_data.json or to a directory containing it.
-    """
     if path.is_dir():
         data_path = path / "benchmark_data.json"
         results_dir = path

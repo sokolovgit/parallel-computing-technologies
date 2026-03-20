@@ -1,5 +1,3 @@
-"""Benchmark configuration."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,7 +5,6 @@ from pathlib import Path
 
 
 def parse_sizes(spec: str) -> list[int]:
-    """Parse sizes from CLI: comma-separated list or 'lo:hi' for 2^lo..2^hi."""
     spec = spec.strip()
     if ":" in spec:
         lo_str, hi_str = spec.split(":", 1)
@@ -18,14 +15,11 @@ def parse_sizes(spec: str) -> list[int]:
 
 
 def parse_processes(spec: str) -> list[int]:
-    """Parse process counts from CLI: comma-separated list, e.g. '2,4,8'."""
     return [int(x.strip()) for x in spec.split(",") if x.strip()]
 
 
 @dataclass(frozen=True)
 class BenchmarkConfig:
-    """Configuration for a benchmark run."""
-
     sizes: list[int]
     process_counts: list[int]
     num_runs: int
@@ -37,7 +31,6 @@ class BenchmarkConfig:
 
     @classmethod
     def default(cls, results_dir: Path | None = None) -> BenchmarkConfig:
-        """Default config: sizes 2^10..2^19, processes 2,4,8."""
         base = Path(__file__).resolve().parent.parent / "results"
         return cls(
             sizes=[2**k for k in range(10, 20)],

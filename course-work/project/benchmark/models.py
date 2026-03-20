@@ -1,5 +1,3 @@
-"""Data models for benchmark results and system metrics."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,17 +9,14 @@ from benchmark.stats import RunStats, compute_stats
 
 @dataclass
 class SystemMetrics:
-    """System metrics for one benchmark run (Unix only)."""
-
     wall_s: float
     cpu_self_s: float
-    cpu_children_s: float  # 0 for sequential
+    cpu_children_s: float
     rss_mb: float
     ctx_voluntary: int
     ctx_involuntary: int
 
     def cpu_utilization(self, nprocs: int) -> float:
-        """Child CPU / (wall * nprocs); ideal is ≤1 for good scaling."""
         if nprocs <= 0:
             return 0.0
         ideal = self.wall_s * nprocs
@@ -40,8 +35,6 @@ class SystemMetrics:
 
 @dataclass
 class BenchmarkResult:
-    """Timing (run lists + stats), system metrics, speedup and efficiency."""
-
     sequential_run_times: dict[int, list[float]] = field(default_factory=dict)
     parallel_run_times: dict[int, dict[int, list[float]]] = field(default_factory=dict)
     sequential_times: dict[int, float] = field(default_factory=dict)
@@ -63,7 +56,6 @@ class BenchmarkResult:
     weak_scaling_parallel_stats: dict[int, RunStats] = field(default_factory=dict)
 
     def _derive_times_and_stats(self) -> None:
-        """Derive median times and RunStats from run-time lists."""
         for size, times in self.sequential_run_times.items():
             if times:
                 st = compute_stats(times)
@@ -80,7 +72,6 @@ class BenchmarkResult:
                     self.parallel_times[nprocs][size] = st.median
 
     def compute_metrics(self) -> None:
-        """Derive times/stats from run lists (if present), then speedup and eff."""
         if self.sequential_run_times or self.parallel_run_times:
             self._derive_times_and_stats()
         self.speedup = {}

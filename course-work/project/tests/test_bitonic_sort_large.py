@@ -1,5 +1,3 @@
-"""Slow correctness tests for very large input arrays."""
-
 import random
 import sys
 from pathlib import Path

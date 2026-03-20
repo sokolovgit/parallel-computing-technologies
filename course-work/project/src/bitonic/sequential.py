@@ -1,17 +1,3 @@
-"""Sequential bitonic sort — iterative implementation.
-
-Complexity: O(n log^2 n).
-Uses the classic iterative comparator network: for block sizes k = 2, 4, ..., n,
-merge steps with stride j = k/2, k/4, ..., 1; partner index is i XOR j.
-
-Optimizations: array.array('q') for compact storage and better
-cache behavior; single local reference in the inner loop to reduce lookups.
-
-References:
-    https://cse.buffalo.edu/faculty/miller/Courses/CSE633/Mullapudi-Spring-2014-CSE633.pdf
-    https://people.cs.rutgers.edu/~venugopa/parallel_summer2012/bitonic_overview.html
-"""
-
 from __future__ import annotations
 
 from array import array
@@ -21,7 +7,6 @@ from bitonic.base import BitonicSorter
 
 
 def _bitonic_sort_iterative(arr: array | list[int], n: int) -> None:
-    """Sort arr[0:n] in-place (ascending). n must be a power of 2."""
     if n <= 1:
         return
 
@@ -43,8 +28,6 @@ def _bitonic_sort_iterative(arr: array | list[int], n: int) -> None:
 
 
 class SequentialBitonicSorter(BitonicSorter):
-    """Iterative bitonic sort on list[int], single process."""
-
     def sort(
         self,
         arr: Sequence[int] | list[int],

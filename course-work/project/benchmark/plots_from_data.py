@@ -1,5 +1,3 @@
-"""Regenerate plots from saved benchmark_data.json."""
-
 from __future__ import annotations
 
 import argparse

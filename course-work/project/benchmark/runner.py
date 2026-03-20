@@ -1,5 +1,3 @@
-"""Benchmark runner: orchestrates runs and produces results."""
-
 from __future__ import annotations
 
 import gc
@@ -44,7 +42,6 @@ def run_trials(
     disable_gc: bool = True,
     track_system_metrics: bool = False,
 ) -> tuple[list[float], RunStats, SystemMetrics | None]:
-    """Run warmup, then timed runs; return wall times, stats, and optional metrics."""
     for _ in range(warmup_runs):
         fn()
     walls: list[float] = []
@@ -57,8 +54,7 @@ def run_trials(
             r0c = resource.getrusage(resource.RUSAGE_CHILDREN)
             t0_wall = time.perf_counter()
             t0_cpu = time.process_time()
-        fn()
-        if HAS_RESOURCE and track_system_metrics:
+            fn()
             t1_wall = time.perf_counter()
             t1_cpu = time.process_time()
             r1 = resource.getrusage(resource.RUSAGE_SELF)
@@ -109,8 +105,6 @@ def _collect_system_metrics(
 
 
 class BenchmarkRunner:
-    """Runs sequential and parallel benchmarks and saves results."""
-
     def __init__(self, config: BenchmarkConfig | None = None) -> None:
         self._config = config or BenchmarkConfig.default()
         self._config.results_dir.mkdir(exist_ok=True)
@@ -125,7 +119,6 @@ class BenchmarkRunner:
         run_one: Callable[[], None],
         track_system_metrics: bool = False,
     ) -> tuple[list[float], RunStats, SystemMetrics | None]:
-        """Run trials and return wall times, stats, and optional metrics."""
         return run_trials(
             run_one,
             warmup_runs=self._config.warmup_runs,
@@ -200,7 +193,6 @@ class BenchmarkRunner:
         return run_times, metrics
 
     def run(self) -> BenchmarkResult:
-        """Execute the full benchmark suite."""
         runs_per = self._config.warmup_runs + self._config.num_runs
         print("=" * 60)
         print("Bitonic Sort Benchmark")

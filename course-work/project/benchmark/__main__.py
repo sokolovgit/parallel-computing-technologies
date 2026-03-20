@@ -1,5 +1,3 @@
-"""Entry point for running the benchmark as a module: python -m benchmark."""
-
 from __future__ import annotations
 
 import argparse
@@ -7,7 +5,6 @@ import os
 import sys
 from pathlib import Path
 
-# Ensure src (bitonic package) is on path when running as __main__
 _root = Path(__file__).resolve().parent.parent
 _src = _root / "src"
 if _src.exists() and str(_src) not in sys.path:

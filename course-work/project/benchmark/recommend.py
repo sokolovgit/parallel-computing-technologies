@@ -1,5 +1,3 @@
-"""Print recommended process count per size from benchmark_data.json."""
-
 from __future__ import annotations
 
 import json
@@ -8,13 +6,11 @@ from pathlib import Path
 
 
 def load_result(path: Path) -> dict:
-    """Load benchmark result JSON; return the data dict."""
     with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def recommend_from_data(data: dict) -> list[tuple[int, int, float, float]]:
-    """From loaded JSON, return list of (size, best_p, speedup, efficiency)."""
     speedup = data.get("speedup") or {}
     efficiency = data.get("efficiency") or {}
     if not speedup:

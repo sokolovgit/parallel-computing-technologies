@@ -1,5 +1,3 @@
-"""Correctness tests for sequential and parallel bitonic sort implementations."""
-
 import random
 import sys
 from pathlib import Path
@@ -10,10 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from bitonic import ParallelBitonicSorter, SequentialBitonicSorter
 from bitonic.base import BitonicSorter
-
-# ---------------------------------------------------------------------------
-# Sequential tests
-# ---------------------------------------------------------------------------
 
 
 class TestSequentialBitonicSorter:
@@ -71,7 +65,6 @@ class TestSequentialBitonicSorter:
         assert list(self.sorter.sort(arr)) == sorted(arr)
 
     def test_large_int64_safe(self):
-        """Values within int64 range (parallel uses c_int64)."""
         random.seed(123)
         arr = [random.randint(-(10**12), 10**12) for _ in range(64)]
         assert list(self.sorter.sort(arr)) == sorted(arr)
@@ -91,11 +84,6 @@ class TestSequentialBitonicSorter:
         orig = list(arr)
         self.sorter.sort(arr)
         assert arr == orig
-
-
-# ---------------------------------------------------------------------------
-# Parallel tests
-# ---------------------------------------------------------------------------
 
 
 class TestParallelBitonicSorter:
@@ -154,7 +142,6 @@ class TestParallelBitonicSorter:
         assert list(sorter.sort(arr)) == sorted(arr)
 
     def test_more_processes_than_elements(self):
-        """Process count > n is clamped; no invalid chunks (start > end)."""
         sorter = ParallelBitonicSorter(num_processes=16)
         arr = [3, 1, 4, 2]
         assert list(sorter.sort(arr)) == sorted(arr)
@@ -174,7 +161,6 @@ class TestParallelBitonicSorter:
         assert arr == orig
 
     def test_large_int64_safe(self):
-        """Values within int64 range; no sentinel overflow."""
         random.seed(123)
         arr = [random.randint(-(10**12), 10**12) for _ in range(64)]
         assert list(self.sorter.sort(arr)) == sorted(arr)
@@ -192,14 +178,7 @@ class TestParallelBitonicSorter:
         assert result.elapsed >= 0
 
 
-# ---------------------------------------------------------------------------
-# Base / padding
-# ---------------------------------------------------------------------------
-
-
 class TestBitonicBase:
-    """Tests for power-of-two padding and base behavior."""
-
     def test_next_power_of_two(self):
         assert BitonicSorter._next_power_of_two(0) == 1
         assert BitonicSorter._next_power_of_two(1) == 1
@@ -230,11 +209,6 @@ class TestBitonicBase:
         assert len(padded) == 4
         assert padded[:3] == [1, 2, 3]
         assert padded[3] == max(arr) + 1
-
-
-# ---------------------------------------------------------------------------
-# Cross-implementation consistency
-# ---------------------------------------------------------------------------
 
 
 class TestCrossImplementation:

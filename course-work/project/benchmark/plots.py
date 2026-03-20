@@ -1,5 +1,3 @@
-"""Plot generation for benchmark results."""
-
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
@@ -28,7 +26,6 @@ def _add_series_ci(
     color: str,
     marker: str = "o",
 ) -> None:
-    """Add one series with error bars to the axes."""
     ax.errorbar(
         x,
         meds,
@@ -53,7 +50,6 @@ def _finish_axes(
     y_min: float | None = None,
     ref_line: tuple[float, str] | None = None,
 ) -> None:
-    """Set labels, scales, optional reference line, legend and grid."""
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
@@ -80,8 +76,6 @@ def _finish_axes(
 
 
 class PlotGenerator:
-    """Generates all benchmark plots from a BenchmarkResult."""
-
     def __init__(
         self,
         result: BenchmarkResult,
@@ -92,7 +86,6 @@ class PlotGenerator:
         self._formats = formats if formats is not None else ["png"]
 
     def _save_fig(self, fig: plt.Figure, base_name: str) -> None:
-        """Save figure in each requested format."""
         for ext in self._formats:
             ext = ext.lower().strip()
             if not ext.startswith("."):
@@ -283,7 +276,6 @@ class PlotGenerator:
         self._save_fig(fig, "cpu_utilization")
 
     def plot_sequential_analysis(self) -> None:
-        """Sequential runtime vs input size only (for report Section 2)."""
         result = self._result
         sizes = sorted(result.sequential_times.keys())
         if not sizes:
@@ -310,7 +302,6 @@ class PlotGenerator:
         self._save_fig(fig, "sequential_analysis")
 
     def generate_all(self) -> None:
-        """Generate all applicable plots."""
         apply_plot_style()
         self.plot_sequential_analysis()
         self.plot_execution_time()

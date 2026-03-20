@@ -25,4 +25,5 @@ build/
 
 # Benchmark results (regenerable)
 course-work/project/results/
-~*.docx
+
+~$*

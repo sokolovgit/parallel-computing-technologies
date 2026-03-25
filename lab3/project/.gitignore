@@ -1,0 +1,6 @@
+matmul/out/
+project/results/
+python-plots/.venv/
+python-plots/__pycache__/
+*.pyc
+.python-version

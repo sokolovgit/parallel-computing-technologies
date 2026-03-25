@@ -1,6 +1,7 @@
 package config;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
 public final class BenchmarkConfig {
 
@@ -11,6 +12,7 @@ public final class BenchmarkConfig {
     public final int runs;
     public final Path outDir;
     public final String prefix;
+    public final boolean sequential;
     public final boolean striped;
     public final boolean fox;
     public final boolean verify;
@@ -21,6 +23,7 @@ public final class BenchmarkConfig {
             int runs,
             Path outDir,
             String prefix,
+            boolean sequential,
             boolean striped,
             boolean fox,
             boolean verify) {
@@ -29,6 +32,7 @@ public final class BenchmarkConfig {
         this.runs = runs;
         this.outDir = outDir;
         this.prefix = prefix;
+        this.sequential = sequential;
         this.striped = striped;
         this.fox = fox;
         this.verify = verify;
@@ -40,6 +44,7 @@ public final class BenchmarkConfig {
         int runs = DEFAULT_RUNS;
         Path out = defaultOutDir();
         String prefix = "benchmark";
+        boolean sequential = false;
         boolean striped = true;
         boolean fox = true;
         boolean verify = false;
@@ -65,15 +70,26 @@ public final class BenchmarkConfig {
                     prefix = require(args, ++i, args.length);
                     break;
                 case "--algorithms":
-                    String algs = require(args, ++i, args.length);
-                    striped = algs.contains("striped") || algs.contains("both");
-                    fox = algs.contains("fox") || algs.contains("both");
+                    String algs = require(args, ++i, args.length).toLowerCase(Locale.ROOT);
+                    if (algs.contains("all")) {
+                        sequential = true;
+                        striped = true;
+                        fox = true;
+                    } else {
+                        sequential = algs.contains("sequential");
+                        striped = algs.contains("striped") || algs.contains("both");
+                        fox = algs.contains("fox") || algs.contains("both");
+                    }
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown arg: " + args[i]);
             }
         }
-        return new BenchmarkConfig(sizes, threads, runs, out, prefix, striped, fox, verify);
+        if (!sequential && !striped && !fox) {
+            throw new IllegalArgumentException(
+                    "Choose at least one of: sequential, striped, fox (or --algorithms all)");
+        }
+        return new BenchmarkConfig(sizes, threads, runs, out, prefix, sequential, striped, fox, verify);
     }
 
     /**

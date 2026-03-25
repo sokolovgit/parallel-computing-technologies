@@ -94,13 +94,7 @@ public final class BenchmarkRunner {
         meta.add(new String[] {"Output directory", abbreviatePath(cfg.outDir.toAbsolutePath().normalize())});
         meta.add(new String[] {"Matrix sizes n", formatIntArrayForMeta(cfg.sizes)});
         meta.add(new String[] {"Thread counts", formatIntArrayForMeta(cfg.threads)});
-        meta.add(
-                new String[] {
-                    "Algorithms",
-                    cfg.striped && cfg.fox
-                            ? "striped + fox"
-                            : cfg.striped ? "striped" : cfg.fox ? "fox" : "(none)"
-                });
+        meta.add(new String[] {"Algorithms", formatAlgorithmsMeta(cfg)});
         meta.add(new String[] {"Host", host});
         meta.add(new String[] {"OS", os});
         meta.add(new String[] {"JVM", jvm});
@@ -119,6 +113,12 @@ public final class BenchmarkRunner {
             double[][] b = new double[n][n];
             MatrixTestData.fillDeterministic(a, b);
 
+            if (cfg.sequential) {
+                BenchmarkResult seqRow = benchSequentialBaseline(a, b, n, cfg.runs, jvm, os, host);
+                rows.add(seqRow);
+                streamingStarted =
+                        printIntermediateBenchRow(benchWidths, streamingStarted, seqRow);
+            }
             if (cfg.striped) {
                 for (int threads : cfg.threads) {
                     BenchmarkResult row = benchStriped(a, b, n, threads, cfg.runs, jvm, os, host);
@@ -228,6 +228,20 @@ public final class BenchmarkRunner {
         return values.length + " values: " + values[0] + " … " + values[values.length - 1];
     }
 
+    private static String formatAlgorithmsMeta(BenchmarkConfig cfg) {
+        List<String> parts = new ArrayList<>();
+        if (cfg.sequential) {
+            parts.add("sequential");
+        }
+        if (cfg.striped) {
+            parts.add("striped");
+        }
+        if (cfg.fox) {
+            parts.add("fox");
+        }
+        return parts.isEmpty() ? "(none)" : String.join(" + ", parts);
+    }
+
     private static String abbreviatePath(Path path) {
         String s = path.toString();
         final int max = 56;
@@ -330,6 +344,36 @@ public final class BenchmarkRunner {
             sb.append(' ').append(padded).append(" |");
         }
         System.out.println(sb);
+    }
+
+    /** Warmup ×1 sequential, then timed sequential-only runs (median → t_parallel = t_sequential, speedup 1). */
+    private static BenchmarkResult benchSequentialBaseline(
+            double[][] a, double[][] b, int n, int runs, String jvm, String os, String host)
+            throws Exception {
+        double[][] cWarm = new double[n][n];
+        SEQUENTIAL.multiply(a, b, cWarm);
+
+        double[][] cSeq = new double[n][n];
+        long[] sequentialNanos = new long[runs];
+        for (int r = 0; r < runs; r++) {
+            long t0 = System.nanoTime();
+            SEQUENTIAL.multiply(a, b, cSeq);
+            sequentialNanos[r] = System.nanoTime() - t0;
+        }
+
+        double medianSeq = medianNanos(sequentialNanos);
+        double ms = medianSeq / 1_000_000.0;
+        return new BenchmarkResult(
+                "sequential",
+                n,
+                1,
+                null,
+                ms,
+                ms,
+                1.0,
+                jvm,
+                os,
+                host);
     }
 
     private static BenchmarkResult benchStriped(

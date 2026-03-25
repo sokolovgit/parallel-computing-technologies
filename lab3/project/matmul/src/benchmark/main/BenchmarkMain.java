@@ -32,7 +32,7 @@ public final class BenchmarkMain {
                         + "  --runs N              timed runs per phase (default 20)\n"
                         + "  --out DIR             output directory (default: ./results, or <matmul.home>/results if set)\n"
                         + "  --prefix NAME         file name prefix (default benchmark)\n"
-                        + "  --algorithms striped|fox|both  (default both)\n"
+                        + "  --algorithms sequential|striped|fox|both|all  (default both; all = sequential+striped+fox)\n"
                         + "  --verify              correctness check only\n");
     }
 }

@@ -1,0 +1,45 @@
+set quiet
+
+# Project root (directory containing this justfile). Used so benchmark output defaults to ./results here.
+root := justfile_directory()
+
+default:
+    @just --list
+
+build:
+    rm -rf matmul/out
+    mkdir -p matmul/out
+    javac -d matmul/out -encoding UTF-8 $(find matmul/src/algorithms -name '*.java')
+    javac -d matmul/out -cp matmul/out -encoding UTF-8 $(find matmul/src/benchmark -name '*.java')
+
+benchmark *args:
+    just build
+    mkdir -p "{{ root }}/results"
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain {{ args }}
+
+verify:
+    just build
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain --verify
+
+# Report sweep: n = 540, 600, …, 1980 (step 60). Every n is divisible by 12 ⇒ Fox works for q=2,3,4 (threads 4, 9, 16). CSV prefix `report`.
+benchmark-report *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    sizes=$(python3 -c "print(','.join(str(n) for n in range(540, 2000, 60)))")
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain \
+      --sizes "$sizes" \
+      --threads 4,9,16 \
+      --runs 20 \
+      --algorithms all \
+      --prefix report \
+      --out results \
+      {{ args }}
+
+plot input="results/latest.csv" out="results/figures":
+    cd plots && uv sync && uv run python -m plots --input "../{{ input }}" --out "../{{ out }}"
+
+plot-dev:
+    cd plots && uv sync && uv run python -m plots --input "../results/latest.csv" --out "../results/figures" --dev

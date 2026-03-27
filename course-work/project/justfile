@@ -39,7 +39,7 @@ benchmark-dev:
 
 # Full preset for report: full size range, more runs, drop outliers
 benchmark-report:
-    uv run python -m benchmark --sizes 4:22 --processes 2,4,8 --num-runs 10 --warmup 2 --drop-outliers
+    uv run python -m benchmark --sizes 4:22 --processes 2,3,4,5,6,7,8,9,10,11,12 --num-runs 10 --warmup 1 --drop-outliers
 
 # Regenerate plots from saved benchmark_data.json (path = dir or path to JSON file)
 plot-results path:

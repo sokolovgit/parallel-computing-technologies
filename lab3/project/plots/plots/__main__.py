@@ -36,7 +36,7 @@ def pick_common_ref_thread(rows: list[dict]) -> int | None:
 
 
 def plot_comparison_sequential_striped_fox(rows: list[dict], out_dir: Path, _dev: bool) -> None:
-    """1) Sequential vs striped vs Fox — median parallel time vs n (Fox/striped at common max thread count)."""
+    """1) Sequential vs striped vs Fox — mean parallel time vs n (striped/Fox at same thread count)."""
     seq_by_n: dict[int, float] = {}
     for r in rows:
         if r["algorithm"] == "sequential":
@@ -44,7 +44,7 @@ def plot_comparison_sequential_striped_fox(rows: list[dict], out_dir: Path, _dev
 
     ref_t = pick_common_ref_thread(rows)
     if ref_t is None:
-        ref_t = 16
+        ref_t = 25
 
     st_by_n: dict[int, float] = {}
     for r in rows:
@@ -71,8 +71,8 @@ def plot_comparison_sequential_striped_fox(rows: list[dict], out_dir: Path, _dev
         ax.plot([p[0] for p in pts], [p[1] for p in pts], marker=m, linestyle="-", label=label)
 
     ax.set_xlabel("Розмір матриці n")
-    ax.set_ylabel("Час (мс, медіана)")
-    ax.set_title("Порівняння: послідовний, смугастий і Фокс")
+    ax.set_ylabel("Середній час (мс)")
+    ax.set_title("Порівняння: послідовний, смугастий і Фокс (середній час vs n)")
     ax.set_yscale("log")
     ax.set_xscale("log")
     ax.grid(True, which="both", alpha=0.3)
@@ -83,13 +83,13 @@ def plot_comparison_sequential_striped_fox(rows: list[dict], out_dir: Path, _dev
 
 
 def plot_striped_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
-    """2) Striped — speedup vs n for each thread count."""
+    """2) Striped — mean parallel time vs n for each thread count."""
     sub = [r for r in rows if r["algorithm"] == "striped"]
     if not sub:
         return
     by_t: dict[int, list[tuple[int, float]]] = defaultdict(list)
     for r in sub:
-        by_t[_int(r, "threads")].append((_int(r, "n"), _float(r, "speedup")))
+        by_t[_int(r, "threads")].append((_int(r, "n"), _float(r, "t_parallel_ms")))
 
     fig, ax = plt.subplots(figsize=(9, 5))
     markers = ["o", "s", "^", "D", "v", "P"]
@@ -103,8 +103,8 @@ def plot_striped_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
             label=f"потоків = {t}",
         )
     ax.set_xlabel("Розмір матриці n")
-    ax.set_ylabel("Прискорення (t_послід / t_парал)")
-    ax.set_title("Смугастий алгоритм: прискорення vs n для різної кількості потоків")
+    ax.set_ylabel("Середній час паралельної фази (мс)")
+    ax.set_title("Смугастий алгоритм: час vs n для 4 / 9 / 25 потоків")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8)
     fig.tight_layout()
@@ -113,13 +113,13 @@ def plot_striped_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
 
 
 def plot_fox_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
-    """3) Fox — speedup vs n for each thread count."""
+    """3) Fox — mean parallel time vs n for each thread count."""
     sub = [r for r in rows if r["algorithm"] == "fox"]
     if not sub:
         return
     by_t: dict[int, list[tuple[int, float]]] = defaultdict(list)
     for r in sub:
-        by_t[_int(r, "threads")].append((_int(r, "n"), _float(r, "speedup")))
+        by_t[_int(r, "threads")].append((_int(r, "n"), _float(r, "t_parallel_ms")))
 
     fig, ax = plt.subplots(figsize=(9, 5))
     markers = ["o", "s", "^", "D", "v", "P"]
@@ -133,8 +133,8 @@ def plot_fox_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
             label=f"потоків = {t} (q = {int(math.sqrt(t))})",
         )
     ax.set_xlabel("Розмір матриці n")
-    ax.set_ylabel("Прискорення (t_послід / t_парал)")
-    ax.set_title("Фокс: прискорення vs n для різної кількості потоків (q×q сітка)")
+    ax.set_ylabel("Середній час паралельної фази (мс)")
+    ax.set_title("Фокс: час vs n для 4 / 9 / 25 потоків (q×q сітка)")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8)
     fig.tight_layout()
@@ -142,27 +142,21 @@ def plot_fox_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
     plt.close(fig)
 
 
-def plot_fox_vs_striped(rows: list[dict], out_dir: Path, _dev: bool) -> None:
-    """4) Fox vs striped — parallel time vs n at the same thread counts."""
-    ts = {_int(r, "threads") for r in rows if r["algorithm"] == "striped"}
-    tf = {_int(r, "threads") for r in rows if r["algorithm"] == "fox"}
-    common = sorted(ts & tf)
-    if not common:
+def plot_striped_and_fox_all_threads(rows: list[dict], out_dir: Path, _dev: bool) -> None:
+    """4) Striped and Fox — all thread counts on one plot (mean parallel time vs n)."""
+    ts = sorted({_int(r, "threads") for r in rows if r["algorithm"] == "striped"})
+    tf = sorted({_int(r, "threads") for r in rows if r["algorithm"] == "fox"})
+    if not ts and not tf:
         return
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    markers_s = ["o", "v", "s", "^"]
-    markers_f = ["D", "p", "P", "X"]
-    for i, t in enumerate(common):
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    markers_s = ["o", "v", "s", "^", "P", "X"]
+    markers_f = ["D", "p", "8", "h", "*", "d"]
+    for i, t in enumerate(ts):
         st = {
             _int(r, "n"): _float(r, "t_parallel_ms")
             for r in rows
             if r["algorithm"] == "striped" and _int(r, "threads") == t
-        }
-        fx = {
-            _int(r, "n"): _float(r, "t_parallel_ms")
-            for r in rows
-            if r["algorithm"] == "fox" and _int(r, "threads") == t
         }
         if st:
             pts = sorted(st.items(), key=lambda p: p[0])
@@ -171,8 +165,14 @@ def plot_fox_vs_striped(rows: list[dict], out_dir: Path, _dev: bool) -> None:
                 [p[1] for p in pts],
                 marker=markers_s[i % len(markers_s)],
                 linestyle="-",
-                label=f"striped, {t} потоків",
+                label=f"смугастий, {t} п.",
             )
+    for i, t in enumerate(tf):
+        fx = {
+            _int(r, "n"): _float(r, "t_parallel_ms")
+            for r in rows
+            if r["algorithm"] == "fox" and _int(r, "threads") == t
+        }
         if fx:
             pts = sorted(fx.items(), key=lambda p: p[0])
             ax.plot(
@@ -180,18 +180,18 @@ def plot_fox_vs_striped(rows: list[dict], out_dir: Path, _dev: bool) -> None:
                 [p[1] for p in pts],
                 marker=markers_f[i % len(markers_f)],
                 linestyle="--",
-                label=f"Fox, {t} потоків",
+                label=f"Фокс, {t} п. (q={int(math.sqrt(t))})",
             )
 
     ax.set_xlabel("Розмір матриці n")
-    ax.set_ylabel("Час паралельної фази (мс, медіана)")
-    ax.set_title("Фокс vs смугастий: час при однакових кількостях потоків")
+    ax.set_ylabel("Середній час паралельної фази (мс)")
+    ax.set_title("Смугастий і Фокс: усі конфігурації потоків на одному графіку")
     ax.set_yscale("log")
     ax.set_xscale("log")
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout()
-    fig.savefig(out_dir / "04_fox_vs_striped.png", dpi=150)
+    fig.savefig(out_dir / "04_striped_fox_all_threads.png", dpi=150)
     plt.close(fig)
 
 
@@ -210,7 +210,7 @@ def main() -> None:
     plot_comparison_sequential_striped_fox(rows, args.out, args.dev)
     plot_striped_threads(rows, args.out, args.dev)
     plot_fox_threads(rows, args.out, args.dev)
-    plot_fox_vs_striped(rows, args.out, args.dev)
+    plot_striped_and_fox_all_threads(rows, args.out, args.dev)
     print(f"Wrote figures to {args.out.resolve()}")
 
 

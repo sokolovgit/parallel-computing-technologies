@@ -1,58 +1,56 @@
 package parallel;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import matrix.MatrixMultiplier;
-import util.ExecutorUtils;
 
 /**
- * Striped parallel multiply: for each inner index {@code k}, row bands of {@code C} are updated in
- * parallel (row-row accumulation from the course slides).
+ * Row-band striped multiply (same approach as {@code StripeMatrixMultiplication} in the course
+ * reference): each thread owns a contiguous row range and computes full dot products for those rows.
  */
 public final class StripedParallelMultiplier implements MatrixMultiplier {
 
-    private final int threads;
+    private final int numProcessors;
 
-    public StripedParallelMultiplier(int threads) {
-        this.threads = threads;
+    public StripedParallelMultiplier(int numProcessors) {
+        this.numProcessors = numProcessors;
     }
 
     @Override
     public void multiply(double[][] a, double[][] b, double[][] c) throws InterruptedException {
         int n = a.length;
-        
         if (n == 0) {
             return;
         }
 
-        int workers = Math.max(1, Math.min(threads, n));
-        ExecutorService executor = Executors.newFixedThreadPool(workers);
-
-        try {
-            for (int k = 0; k < n; k++) {
-                CountDownLatch latch = new CountDownLatch(workers);
-                final int kf = k;
-                for (int t = 0; t < workers; t++) {
-                    final int start = t * n / workers;
-                    final int end = (t + 1) * n / workers;
-                    executor.execute(() -> {
-                        try {
-                            for (int i = start; i < end; i++) {
-                                double aik = a[i][kf];
-                                for (int j = 0; j < n; j++) {
-                                    c[i][j] += aik * b[kf][j];
+        int workers = Math.max(1, Math.min(numProcessors, n));
+        Thread[] threads = new Thread[workers];
+        int rowsPerThread = n / workers;
+        int remainder = n % workers;
+        int startRow = 0;
+        for (int i = 0; i < workers; i++) {
+            int rows = rowsPerThread + (i < remainder ? 1 : 0);
+            int endRow = startRow + rows;
+            final int sRow = startRow;
+            final int eRow = endRow;
+            threads[i] =
+                    new Thread(
+                            () -> {
+                                for (int row = sRow; row < eRow; row++) {
+                                    for (int j = 0; j < n; j++) {
+                                        double sum = 0.0;
+                                        for (int k = 0; k < n; k++) {
+                                            sum += a[row][k] * b[k][j];
+                                        }
+                                        c[row][j] = sum;
+                                    }
                                 }
-                            }
-                        } finally {
-                            latch.countDown();
-                        }
-                    });
-                }
-                latch.await();
-            }
-        } finally {
-            ExecutorUtils.shutdownQuietly(executor);
+                            });
+            startRow = endRow;
+        }
+        for (Thread thread : threads) {
+            thread.start();
+        }
+        for (Thread thread : threads) {
+            thread.join();
         }
     }
 }

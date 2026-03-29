@@ -21,17 +21,17 @@ verify:
     just build
     java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain --verify
 
-# Report sweep: n = 540, 600, …, 1980 (step 60). Every n is divisible by 12 ⇒ Fox works for q=2,3,4 (threads 4, 9, 16). CSV prefix `report`.
+# Report sweep: n = 510, 540, …, 990 (step 30). Every n is divisible by 30 ⇒ Fox works for q=2,3,5 (threads 4, 9, 25). CSV prefix `report`.
 benchmark-report *args:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{ root }}"
     just build
     mkdir -p results
-    sizes=$(python3 -c "print(','.join(str(n) for n in range(540, 2000, 60)))")
+    sizes=$(python3 -c "print(','.join(str(n) for n in range(510, 990, 30)))")
     java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain \
       --sizes "$sizes" \
-      --threads 4,9,16 \
+      --threads 4,9,25 \
       --runs 20 \
       --algorithms all \
       --prefix report \

@@ -1,21 +1,20 @@
 package sequential;
 
-import java.util.Arrays;
 import matrix.MatrixMultiplier;
 
-/** Classic sequential multiply; i–k–j loop order for row-major cache locality. */
+/** Sequential multiply (same structure as {@code DefaultMatrixMultiplication} in course reference). */
 public final class SequentialMultiplier implements MatrixMultiplier {
 
     @Override
     public void multiply(double[][] a, double[][] b, double[][] c) {
         int n = a.length;
         for (int i = 0; i < n; i++) {
-            Arrays.fill(c[i], 0.0);
-            for (int k = 0; k < n; k++) {
-                double aik = a[i][k];
-                for (int j = 0; j < n; j++) {
-                    c[i][j] += aik * b[k][j];
+            for (int j = 0; j < n; j++) {
+                double sum = 0.0;
+                for (int k = 0; k < n; k++) {
+                    sum += a[i][k] * b[k][j];
                 }
+                c[i][j] = sum;
             }
         }
     }

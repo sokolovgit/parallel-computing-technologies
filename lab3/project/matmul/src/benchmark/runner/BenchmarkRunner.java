@@ -90,7 +90,7 @@ public final class BenchmarkRunner {
         String host = java.net.InetAddress.getLocalHost().getHostName();
 
         List<String[]> meta = new ArrayList<>();
-        meta.add(new String[] {"Protocol", "median " + cfg.runs + " runs/phase; warmup 1× sequential per config"});
+        meta.add(new String[] {"Protocol", "mean " + cfg.runs + " runs/phase; warmup 1× sequential per config"});
         meta.add(new String[] {"Output directory", abbreviatePath(cfg.outDir.toAbsolutePath().normalize())});
         meta.add(new String[] {"Matrix sizes n", formatIntArrayForMeta(cfg.sizes)});
         meta.add(new String[] {"Thread counts", formatIntArrayForMeta(cfg.threads)});
@@ -346,7 +346,7 @@ public final class BenchmarkRunner {
         System.out.println(sb);
     }
 
-    /** Warmup ×1 sequential, then timed sequential-only runs (median → t_parallel = t_sequential, speedup 1). */
+    /** Warmup ×1 sequential, then timed sequential-only runs (mean → t_parallel = t_sequential, speedup 1). */
     private static BenchmarkResult benchSequentialBaseline(
             double[][] a, double[][] b, int n, int runs, String jvm, String os, String host)
             throws Exception {
@@ -361,8 +361,8 @@ public final class BenchmarkRunner {
             sequentialNanos[r] = System.nanoTime() - t0;
         }
 
-        double medianSeq = medianNanos(sequentialNanos);
-        double ms = medianSeq / 1_000_000.0;
+        double meanSeq = meanNanos(sequentialNanos);
+        double ms = meanSeq / 1_000_000.0;
         return new BenchmarkResult(
                 "sequential",
                 n,
@@ -402,17 +402,17 @@ public final class BenchmarkRunner {
             sequentialNanos[r] = System.nanoTime() - t0;
         }
 
-        double medianPar = medianNanos(parallelNanos);
-        double medianSeq = medianNanos(sequentialNanos);
-        double speedup = medianSeq / medianPar;
+        double meanPar = meanNanos(parallelNanos);
+        double meanSeq = meanNanos(sequentialNanos);
+        double speedup = meanSeq / meanPar;
 
         return new BenchmarkResult(
                 "striped",
                 n,
                 threads,
                 null,
-                medianPar / 1_000_000.0,
-                medianSeq / 1_000_000.0,
+                meanPar / 1_000_000.0,
+                meanSeq / 1_000_000.0,
                 speedup,
                 jvm,
                 os,
@@ -453,30 +453,28 @@ public final class BenchmarkRunner {
             sequentialNanos[r] = System.nanoTime() - t0;
         }
 
-        double medianPar = medianNanos(parallelNanos);
-        double medianSeq = medianNanos(sequentialNanos);
-        double speedup = medianSeq / medianPar;
+        double meanPar = meanNanos(parallelNanos);
+        double meanSeq = meanNanos(sequentialNanos);
+        double speedup = meanSeq / meanPar;
 
         return new BenchmarkResult(
                 "fox",
                 n,
                 threads,
                 q,
-                medianPar / 1_000_000.0,
-                medianSeq / 1_000_000.0,
+                meanPar / 1_000_000.0,
+                meanSeq / 1_000_000.0,
                 speedup,
                 jvm,
                 os,
                 host);
     }
 
-    private static double medianNanos(long[] sortedCopy) {
-        long[] arr = sortedCopy.clone();
-        Arrays.sort(arr);
-        int n = arr.length;
-        if (n % 2 == 1) {
-            return arr[n / 2];
+    private static double meanNanos(long[] samples) {
+        long sum = 0;
+        for (long v : samples) {
+            sum += v;
         }
-        return (arr[n / 2 - 1] + arr[n / 2]) / 2.0;
+        return (double) sum / (double) samples.length;
     }
 }

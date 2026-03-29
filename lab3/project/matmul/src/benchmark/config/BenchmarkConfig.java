@@ -40,7 +40,7 @@ public final class BenchmarkConfig {
 
     public static BenchmarkConfig parse(String[] args) {
         int[] sizes = {512, 1024};
-        int[] threads = {4, 9, 16};
+        int[] threads = {4, 9, 25};
         int runs = DEFAULT_RUNS;
         Path out = defaultOutDir();
         String prefix = "benchmark";

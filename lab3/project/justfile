@@ -43,3 +43,12 @@ plot input="results/latest.csv" out="results/figures":
 
 plot-dev:
     cd plots && uv sync && uv run python -m plots --input "../results/latest.csv" --out "../results/figures" --dev
+
+# Hierarchical Excel table (Sequential + Striped + Fox: threads × Time/Speedup) from benchmark CSV.
+# Paths are relative to the project root (this justfile's directory), or absolute. Example:
+#   just hierarchical-table ../docs/results/latest.csv results/matrix_table.xlsx
+#   just hierarchical-table ../docs/results/latest.csv /tmp/matrix_table.xlsx
+hierarchical-table csv_path out_path:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/scripts" && uv sync && MATMUL_HOME="{{ root }}" uv run python csv_to_hierarchical_table.py "{{ csv_path }}" -o "{{ out_path }}"

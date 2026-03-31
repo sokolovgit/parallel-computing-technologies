@@ -25,6 +25,7 @@ def _add_series_ci(
     label: str,
     color: str,
     marker: str = "o",
+    linewidth: float = 2,
 ) -> None:
     ax.errorbar(
         x,
@@ -32,7 +33,7 @@ def _add_series_ci(
         yerr=errs,
         marker=marker,
         label=label,
-        linewidth=2,
+        linewidth=linewidth,
         capsize=2,
         color=color,
     )
@@ -49,6 +50,9 @@ def _finish_axes(
     size_axis: bool = False,
     y_min: float | None = None,
     ref_line: tuple[float, str] | None = None,
+    legend_loc: str = "best",
+    legend_ncol: int = 1,
+    legend_bbox_to_anchor: tuple[float, float] | None = None,
 ) -> None:
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
@@ -71,7 +75,7 @@ def _finish_axes(
             alpha=0.7,
             label=ref_label,
         )
-    ax.legend(loc="best")
+    ax.legend(loc=legend_loc, ncol=legend_ncol, bbox_to_anchor=legend_bbox_to_anchor)
     ax.grid(True, alpha=GRID_ALPHA, linestyle="-")
 
 
@@ -97,32 +101,39 @@ class PlotGenerator:
 
     def plot_execution_time(self) -> None:
         result = self._result
-        sizes = sorted(result.sequential_times.keys())
-        fig, ax = plt.subplots(figsize=FIG_SIZE)
+        min_n, max_n = 4_096, 4_194_304
+        sizes = sorted(s for s in result.sequential_times.keys() if min_n <= s <= max_n)
+        if not sizes:
+            return
+        fig, ax = plt.subplots(figsize=(11, 9))
         seq_meds = [result.sequential_times[s] for s in sizes]
         seq_errs = [
             result.sequential_stats[s].ci_half if s in result.sequential_stats else 0.0
             for s in sizes
         ]
         _add_series_ci(
-            ax, sizes, seq_meds, seq_errs, "Послідовний", color_for_sequential()
+            ax,
+            sizes,
+            seq_meds,
+            seq_errs,
+            "Послідовний",
+            color_for_sequential(),
+            linewidth=1.0,
         )
+        highlighted_nprocs = {2, 4, 8}
         for idx, nprocs in enumerate(sorted(result.parallel_times.keys())):
             meds = [result.parallel_times[nprocs][s] for s in sizes]
-            errs = [
-                result.parallel_stats.get(nprocs, {}).get(s)
-                and result.parallel_stats[nprocs][s].ci_half
-                or 0.0
-                for s in sizes
-            ]
-            _add_series_ci(
-                ax,
+            is_highlighted = nprocs in highlighted_nprocs
+            ax.plot(
                 sizes,
                 meds,
-                errs,
-                f"Паралельний ({nprocs} процесів)",
-                color_for_process_count(idx),
                 marker="s",
+                label=f"P={nprocs}",
+                linewidth=1.8 if is_highlighted else 0.9,
+                markersize=4 if is_highlighted else 3,
+                alpha=1.0 if is_highlighted else 0.25,
+                color=color_for_process_count(idx),
+                zorder=3 if is_highlighted else 1,
             )
         _finish_axes(
             ax,
@@ -132,7 +143,10 @@ class PlotGenerator:
             log_x=True,
             log_y=True,
             size_axis=True,
+            legend_loc="lower right",
+            legend_ncol=2,
         )
+        ax.set_xlim(min_n, max_n)
         fig.tight_layout()
         self._save_fig(fig, "execution_time")
 

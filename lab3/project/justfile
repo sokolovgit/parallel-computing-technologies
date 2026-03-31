@@ -1,0 +1,54 @@
+set quiet
+
+# Project root (directory containing this justfile). Used so benchmark output defaults to ./results here.
+root := justfile_directory()
+
+default:
+    @just --list
+
+build:
+    rm -rf matmul/out
+    mkdir -p matmul/out
+    javac -d matmul/out -encoding UTF-8 $(find matmul/src/algorithms -name '*.java')
+    javac -d matmul/out -cp matmul/out -encoding UTF-8 $(find matmul/src/benchmark -name '*.java')
+
+benchmark *args:
+    just build
+    mkdir -p "{{ root }}/results"
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain {{ args }}
+
+verify:
+    just build
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain --verify
+
+# Report sweep: n = 510, 540, …, 990 (step 30). Every n is divisible by 30 ⇒ Fox works for q=2,3,5 (threads 4, 9, 25). CSV prefix `report`.
+benchmark-report *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    sizes=$(python3 -c "print(','.join(str(n) for n in range(510, 990, 30)))")
+    java -Dmatmul.home="{{ root }}" -cp matmul/out main.BenchmarkMain \
+      --sizes "$sizes" \
+      --threads 4,9,25 \
+      --runs 20 \
+      --algorithms all \
+      --prefix report \
+      --out results \
+      {{ args }}
+
+plot input="results/latest.csv" out="results/figures":
+    cd plots && uv sync && uv run python -m plots --input "../{{ input }}" --out "../{{ out }}"
+
+plot-dev:
+    cd plots && uv sync && uv run python -m plots --input "../results/latest.csv" --out "../results/figures" --dev
+
+# Hierarchical Excel table (Sequential + Striped + Fox: threads × Time/Speedup) from benchmark CSV.
+# Paths are relative to the project root (this justfile's directory), or absolute. Example:
+#   just hierarchical-table ../docs/results/latest.csv results/matrix_table.xlsx
+#   just hierarchical-table ../docs/results/latest.csv /tmp/matrix_table.xlsx
+hierarchical-table csv_path out_path:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/scripts" && uv sync && MATMUL_HOME="{{ root }}" uv run python csv_to_hierarchical_table.py "{{ csv_path }}" -o "{{ out_path }}"

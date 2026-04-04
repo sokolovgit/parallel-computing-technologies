@@ -5,6 +5,12 @@ root := justfile_directory()
 default:
     @just --list
 
+# Усі .java з src/ у вигляді === відносний/шлях.java === + вміст (для додатку до звіту)
+print-java:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash "{{ root }}/scripts/dump_lab4_java.sh"
+
 # Compile all Java sources under src/
 build:
     #!/usr/bin/env bash

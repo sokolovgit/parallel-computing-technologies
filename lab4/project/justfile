@@ -73,8 +73,13 @@ task3:
     just build
     java -Dlab4.home="{{ root }}" -cp out lab4.task3.Task3Main
 
+# Завдання 4 — документи з ≥2 ІТ-ключовими словами (токени) під data/task4/
 task4:
-    @echo "Task4: не реалізовано." && exit 1
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    java -Dlab4.home="{{ root }}" -cp out lab4.task4.Task4Main
 
 corpus-fetch *args:
     #!/usr/bin/env bash

@@ -1,9 +1,5 @@
 package lab4.task3;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
@@ -60,14 +56,6 @@ public final class CommonWordsTask extends RecursiveTask<Set<String>> {
     }
 
     static Set<String> readWords(Path p) {
-        try {
-            HashSet<String> s = new HashSet<>();
-            for (String line : Files.readAllLines(p, StandardCharsets.UTF_8)) {
-                Words.forEachWord(line, w -> s.add(w));
-            }
-            return s;
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return Words.readWordSet(p);
     }
 }

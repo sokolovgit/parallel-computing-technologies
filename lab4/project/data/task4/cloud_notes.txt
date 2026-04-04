@@ -1,0 +1,2 @@
+Our team deploys a service to the cloud using kubernetes and docker on linux servers.
+The api uses encryption and a stable protocol for the client.

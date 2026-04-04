@@ -1,0 +1,2 @@
+Beta gamma delta parallel computing.
+Shared token and common words appear here.

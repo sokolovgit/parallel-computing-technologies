@@ -1,5 +1,7 @@
 package lab4.common;
 
+import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,6 +21,17 @@ public final class Words {
         Matcher m = TOKEN.matcher(line);
         while (m.find()) {
             onLength.accept(m.group().length());
+        }
+    }
+
+    /** Lowercase word tokens (same class as {@link #forEachWordLength}). */
+    public static void forEachWord(String line, Consumer<String> onWord) {
+        if (line == null || line.isEmpty()) {
+            return;
+        }
+        Matcher m = TOKEN.matcher(line);
+        while (m.find()) {
+            onWord.accept(m.group().toLowerCase(Locale.ROOT));
         }
     }
 }

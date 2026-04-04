@@ -1,0 +1,2 @@
+Gamma epsilon parallel shared token.
+Only common thread pool words overlap with others.

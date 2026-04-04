@@ -42,9 +42,28 @@ benchmark-task1-corpus:
     java -Dlab4.home="{{ root }}" -cp out lab4.task1.Task1Main bench-corpus
     cp -f results/task1_corpus_benchmark.csv results/latest_task1.csv
 
-# Завдання 2–4 (пізніше)
+# Завдання 2 — демо: перевірка Cseq≈Cfj + один бенчмарк (n=512)
 task2:
-    @echo "Task2: не реалізовано." && exit 1
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    java -Dlab4.home="{{ root }}" -cp out lab4.task2.Task2Main
+
+# CSV: стрічкове МН ForkJoin vs послідовне (n і P — у Task2Main)
+benchmark-task2:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    java -Dlab4.home="{{ root }}" -cp out lab4.task2.Task2Main bench
+    cp -f results/task2_benchmark.csv results/latest_task2.csv
+
+plot-task2 input="results/latest_task2.csv" out="results/figures_task2":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/plots" && uv sync && uv run python -m lab4_plots.task2 --input "../{{ input }}" --out "../{{ out }}"
 
 task3:
     @echo "Task3: не реалізовано." && exit 1

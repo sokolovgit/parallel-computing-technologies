@@ -1,0 +1,3 @@
+Паралельні обчислення та ForkJoinPool дозволяють ефективно використовувати багатоядерні процесори.
+Java надає RecursiveTask і RecursiveAction для розбиття роботи на підзадачі.
+Довгі слова на кшталт supercalifragilisticexpialidocious рідко трапляються у технічних текстах.

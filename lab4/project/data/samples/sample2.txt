@@ -1,0 +1,3 @@
+Information technology includes algorithms, databases, networks, and software engineering.
+CPU cores run threads; fork join splits tasks recursively until a threshold is reached.
+Word length varies: a, I, go, run, data, thread, parallelization.

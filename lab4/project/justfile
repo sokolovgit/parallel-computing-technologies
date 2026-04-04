@@ -1,0 +1,66 @@
+set quiet
+
+root := justfile_directory()
+
+default:
+    @just --list
+
+# Compile all Java sources under src/
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    rm -rf out
+    mkdir -p out
+    javac -encoding UTF-8 -d out $(find src -name '*.java')
+
+# Task 1 — демо: статистика + один бенчмарк у консоль (data/samples, repeat=8000)
+task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    java -Dlab4.home="{{ root }}" -cp out lab4.task1.Task1Main
+
+# CSV для графіків: малий корпус + великий repeat (параметри всередині Task1Main)
+benchmark-task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    java -Dlab4.home="{{ root }}" -cp out lab4.task1.Task1Main bench
+    cp -f results/task1_benchmark.csv results/latest_task1.csv
+
+# CSV по великому корпусу data/corpus (repeat=1)
+benchmark-task1-corpus:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    java -Dlab4.home="{{ root }}" -cp out lab4.task1.Task1Main bench-corpus
+    cp -f results/task1_corpus_benchmark.csv results/latest_task1.csv
+
+# Завдання 2–4 (пізніше)
+task2:
+    @echo "Task2: не реалізовано." && exit 1
+
+task3:
+    @echo "Task3: не реалізовано." && exit 1
+
+task4:
+    @echo "Task4: не реалізовано." && exit 1
+
+corpus-fetch *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/scripts" && uv sync && uv run python fetch_corpus.py --base-dir "{{ root }}" {{ args }}
+
+plot input="results/latest_task1.csv" out="results/figures":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/plots" && uv sync && uv run python -m lab4_plots --input "../{{ input }}" --out "../{{ out }}"
+
+plot-dev:
+    cd "{{ root }}/plots" && uv sync && uv run python -m lab4_plots --input "../results/latest_task1.csv" --out "../results/figures" --dev

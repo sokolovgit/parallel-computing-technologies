@@ -1,0 +1,5 @@
+out/
+results/
+data/corpus/
+scripts/.venv/
+plots/.venv/

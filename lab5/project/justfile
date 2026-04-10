@@ -2,9 +2,14 @@ set quiet
 
 root := justfile_directory()
 
+# Public: `just task1` (one run) and `just task1-plots` (CSV + figures).
+
 default:
+    @echo "lab5:  just task1        — task 1 quick single run"
+    @echo "       just task1-plots  — task 1 benchmark CSV + matplotlib figures"
     @just --list
 
+[private]
 build:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -19,3 +24,15 @@ task1:
     cd "{{ root }}"
     just build
     java -cp out lab5.task1.Task1Main
+
+task1-plots:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mkdir -p results
+    java -Dlab5.home="{{ root }}" -cp out lab5.task1.Task1Benchmark
+    cd "{{ root }}/plots" && uv sync && uv run python -m lab5_plots \
+      --by-load "../results/lab5_by_load.csv" \
+      --by-queue "../results/lab5_by_queue.csv" \
+      --out "../results/figures_task1"

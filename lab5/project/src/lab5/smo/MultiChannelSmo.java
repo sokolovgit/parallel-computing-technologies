@@ -69,6 +69,8 @@ public final class MultiChannelSmo {
         stopProducing.set(true);
         producer.join();
 
+        waitUntilDrained();
+
         channelPool.shutdown();
         boolean finished = channelPool.awaitTermination(5, TimeUnit.MINUTES);
         if (!finished) {
@@ -90,6 +92,26 @@ public final class MultiChannelSmo {
                 rejected.get(),
                 served.get(),
                 samples);
+    }
+
+    /**
+     * Waits until no customer is in service and the waiting buffer is empty, so no further
+     * {@code execute} calls will be scheduled before {@link ExecutorService#shutdown()}.
+     */
+    private void waitUntilDrained() throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(5);
+        while (true) {
+            synchronized (lock) {
+                if (waitQueue.isEmpty() && busyChannels == 0) {
+                    return;
+                }
+            }
+            if (System.nanoTime() > deadlineNanos) {
+                throw new IllegalStateException(
+                        "Queue/system did not drain within 5 minutes after stopping arrivals.");
+            }
+            Thread.sleep(1L);
+        }
     }
 
     private void producerLoop() {

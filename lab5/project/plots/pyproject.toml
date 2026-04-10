@@ -1,0 +1,19 @@
+[project]
+name = "lab5-plots"
+version = "0.1.0"
+description = "Plots for lab5 SMO simulation CSV (Java benchmark output)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lab5_plots"]
+
+[tool.uv]
+package = true

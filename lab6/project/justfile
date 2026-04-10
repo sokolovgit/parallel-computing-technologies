@@ -1,0 +1,24 @@
+set quiet
+
+root := justfile_directory()
+
+# Requires: Open MPI (mpicc, mpirun). macOS: brew install open-mpi
+
+default:
+    @echo "lab6:  just task1  — task 1: blocking + non-blocking P2P demo (np=2)"
+    @just --list
+
+[private]
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task1_p2p src/task1_p2p.c
+
+task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    mpirun -np 2 ./bin/task1_p2p

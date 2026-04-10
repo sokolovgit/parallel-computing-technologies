@@ -54,3 +54,8 @@ task3 *ARGS:
     cd "{{ root }}"
     just build
     java -cp out lab5.task3.Task3Main {{ ARGS }}
+
+print-java:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash "{{ root }}/scripts/dump_lab5_java.sh"

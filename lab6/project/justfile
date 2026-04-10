@@ -5,20 +5,38 @@ root := justfile_directory()
 # Requires: Open MPI (mpicc, mpirun). macOS: brew install open-mpi
 
 default:
-    @echo "lab6:  just task1  — task 1: blocking + non-blocking P2P demo (np=2)"
+    @echo "lab6:  just task1  — P2P demo (np=2)"
+    @echo "       just task2  — matrix multiply, blocking MPI (default np=4)"
     @just --list
 
 [private]
-build:
+build-task1:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{ root }}"
     mkdir -p bin
     mpicc -O2 -Wall -Wextra -std=c11 -o bin/task1_p2p src/task1_p2p.c
 
+[private]
+build-task2:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task2_mm_blocking src/task2_mm_blocking.c -lm
+
 task1:
     #!/usr/bin/env bash
     set -euo pipefail
     cd "{{ root }}"
-    just build
+    just build-task1
     mpirun -np 2 ./bin/task1_p2p
+
+# Task 2: blocking matrix multiply. Optional: NRA NCA NCB. Optional env MP_PROCS for process count (default 4).
+task2 *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build-task2
+    np="${MP_PROCS:-4}"
+    mpirun -np "$np" ./bin/task2_mm_blocking {{ ARGS }}

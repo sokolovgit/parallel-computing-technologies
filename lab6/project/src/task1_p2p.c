@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
         fflush(stdout);
     }
 
-    /* --- Blocking exchange: rank 0 -> rank 1 --- */
+    /* Blocking exchange: rank 0 -> rank 1 */
     if (rank == 0) {
         int msg = 42;
         MPI_Send(&msg, 1, MPI_INT, 1, TAG_BLOCK, MPI_COMM_WORLD);
@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    /* --- Non-blocking: rank 0 -> rank 1 --- */
+    /* Non-blocking: rank 0 -> rank 1 */
     if (rank == 0) {
         int msg = 7;
         MPI_Request req;

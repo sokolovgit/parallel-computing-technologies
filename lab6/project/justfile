@@ -7,6 +7,7 @@ root := justfile_directory()
 default:
     @echo "lab6:  just task1  — P2P demo (np=2)"
     @echo "       just task2  — matrix multiply, blocking MPI (default np=4)"
+    @echo "       just task3  — matrix multiply, non-blocking MPI (default np=4)"
     @just --list
 
 [private]
@@ -25,6 +26,14 @@ build-task2:
     mkdir -p bin
     mpicc -O2 -Wall -Wextra -std=c11 -o bin/task2_mm_blocking src/task2_mm_blocking.c -lm
 
+[private]
+build-task3:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task3_mm_nonblocking src/task3_mm_nonblocking.c -lm
+
 task1:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -40,3 +49,12 @@ task2 *ARGS:
     just build-task2
     np="${MP_PROCS:-4}"
     mpirun -np "$np" ./bin/task2_mm_blocking {{ ARGS }}
+
+# Task 3: non-blocking matrix multiply (Isend/Irecv + Wait/Waitall). Optional: NRA NCA NCB. MP_PROCS (default 4).
+task3 *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build-task3
+    np="${MP_PROCS:-4}"
+    mpirun -np "$np" ./bin/task3_mm_nonblocking {{ ARGS }}

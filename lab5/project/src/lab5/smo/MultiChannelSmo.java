@@ -20,6 +20,49 @@ import lab5.common.SimulationResult;
  */
 public final class MultiChannelSmo {
 
+    /** Point-in-time view of the model for live monitoring (task 3). */
+    public static final class SmoSnapshot {
+
+        private final int queueSize;
+        private final int busyChannels;
+        private final long arrivalAttempts;
+        private final long rejected;
+        private final long served;
+
+        public SmoSnapshot(
+                int queueSize,
+                int busyChannels,
+                long arrivalAttempts,
+                long rejected,
+                long served) {
+            this.queueSize = queueSize;
+            this.busyChannels = busyChannels;
+            this.arrivalAttempts = arrivalAttempts;
+            this.rejected = rejected;
+            this.served = served;
+        }
+
+        public int queueSize() {
+            return queueSize;
+        }
+
+        public int busyChannels() {
+            return busyChannels;
+        }
+
+        public long arrivalAttempts() {
+            return arrivalAttempts;
+        }
+
+        public long rejected() {
+            return rejected;
+        }
+
+        public long served() {
+            return served;
+        }
+    }
+
     private final SimulationConfig cfg;
     private final Object lock = new Object();
     private final Queue<Customer> waitQueue = new ArrayDeque<>();
@@ -43,7 +86,38 @@ public final class MultiChannelSmo {
         this.arrivalRng = new Random(cfg.randomSeed());
     }
 
+    /**
+     * Consistent view of queue length, busy servers, and counters (for a separate status thread).
+     */
+    public SmoSnapshot snapshot() {
+        synchronized (lock) {
+            return new SmoSnapshot(
+                    waitQueue.size(),
+                    busyChannels,
+                    arrivalAttempts.get(),
+                    rejected.get(),
+                    served.get());
+        }
+    }
+
     public SimulationResult run() throws InterruptedException {
+        return runSimulation(0L);
+    }
+
+    /**
+     * Same as {@link #run}, but a daemon {@code status-reporter} thread prints {@link #snapshot()} every
+     * {@code reportIntervalMillis} (lab task 3: dynamic output in a separate thread).
+     */
+    public SimulationResult runWithLiveReporter(long reportIntervalMillis) throws InterruptedException {
+        if (reportIntervalMillis < 1L) {
+            throw new IllegalArgumentException("reportIntervalMillis must be >= 1");
+        }
+        return runSimulation(reportIntervalMillis);
+    }
+
+    private SimulationResult runSimulation(long reportIntervalMillis) throws InterruptedException {
+        boolean withReporter = reportIntervalMillis > 0L;
+
         Thread sampler = new Thread(this::sampleQueueLoop, "queue-sampler");
         sampler.setDaemon(true);
         sampler.start();
@@ -51,34 +125,80 @@ public final class MultiChannelSmo {
         Thread producer = new Thread(this::producerLoop, "arrival-producer");
         producer.start();
 
-        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
-        while (served.get() < cfg.minServed()) {
-            if (System.nanoTime() > deadlineNanos) {
-                stopProducing.set(true);
-                producer.join();
-                channelPool.shutdownNow();
-                samplingActive.set(false);
-                sampler.join(5_000);
-                throw new IllegalStateException(
-                        "Could not reach minServed="
-                                + cfg.minServed()
-                                + " within 10 minutes; reduce load or add queue capacity / servers.");
+        final AtomicBoolean reporterActive = new AtomicBoolean(withReporter);
+        Thread reporter = null;
+        if (withReporter) {
+            final long period = reportIntervalMillis;
+            reporter =
+                    new Thread(
+                            () -> {
+                                // Print first, then sleep — otherwise a ~0.1 s run with a 50 ms period
+                                // only shows one line (first tick was after the full sleep).
+                                while (reporterActive.get()) {
+                                    SmoSnapshot s = snapshot();
+                                    synchronized (System.out) {
+                                        System.out.printf(
+                                                "[status-reporter] queue=%d busyChannels=%d "
+                                                        + "arrivals=%d rejected=%d served=%d (targetServed=%d)%n",
+                                                s.queueSize(),
+                                                s.busyChannels(),
+                                                s.arrivalAttempts(),
+                                                s.rejected(),
+                                                s.served(),
+                                                cfg.minServed());
+                                    }
+                                    if (!reporterActive.get()) {
+                                        break;
+                                    }
+                                    try {
+                                        Thread.sleep(period);
+                                    } catch (InterruptedException e) {
+                                        Thread.currentThread().interrupt();
+                                        break;
+                                    }
+                                }
+                            },
+                            "status-reporter");
+            reporter.setDaemon(true);
+            reporter.start();
+        }
+
+        try {
+            long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
+            while (served.get() < cfg.minServed()) {
+                if (System.nanoTime() > deadlineNanos) {
+                    stopProducing.set(true);
+                    producer.join();
+                    channelPool.shutdownNow();
+                    samplingActive.set(false);
+                    sampler.join(5_000);
+                    throw new IllegalStateException(
+                            "Could not reach minServed="
+                                    + cfg.minServed()
+                                    + " within 10 minutes; reduce load or add queue capacity / servers.");
+                }
+                Thread.sleep(2L);
             }
-            Thread.sleep(2L);
+            stopProducing.set(true);
+            producer.join();
+
+            waitUntilDrained();
+
+            channelPool.shutdown();
+            boolean finished = channelPool.awaitTermination(5, TimeUnit.MINUTES);
+            if (!finished) {
+                channelPool.shutdownNow();
+            }
+
+            samplingActive.set(false);
+            sampler.join(5_000);
+        } finally {
+            reporterActive.set(false);
+            if (reporter != null) {
+                reporter.interrupt();
+                reporter.join(2_000);
+            }
         }
-        stopProducing.set(true);
-        producer.join();
-
-        waitUntilDrained();
-
-        channelPool.shutdown();
-        boolean finished = channelPool.awaitTermination(5, TimeUnit.MINUTES);
-        if (!finished) {
-            channelPool.shutdownNow();
-        }
-
-        samplingActive.set(false);
-        sampler.join(5_000);
 
         long samples = queueSampleCount.get();
         double meanQueue = samples == 0 ? 0.0 : queueSampleSum.get() / (double) samples;

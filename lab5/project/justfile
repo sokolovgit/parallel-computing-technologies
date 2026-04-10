@@ -8,6 +8,7 @@ default:
     @echo "lab5:  just task1        — task 1 quick single run"
     @echo "       just task1-plots  — task 1 benchmark CSV + matplotlib figures"
     @echo "       just task2         — task 2 parallel runs (optional: N, -v)"
+    @echo "       just task3         — task 3 live status thread (optional: interval ms)"
     @just --list
 
 [private]
@@ -45,3 +46,11 @@ task2 *ARGS:
     cd "{{ root }}"
     just build
     java -cp out lab5.task2.Task2Main {{ ARGS }}
+
+# Task 3: periodic status in separate thread; optional reporter interval in ms (default 100, min 50)
+task3 *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    java -cp out lab5.task3.Task3Main {{ ARGS }}

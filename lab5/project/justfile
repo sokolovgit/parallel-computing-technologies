@@ -1,0 +1,21 @@
+set quiet
+
+root := justfile_directory()
+
+default:
+    @just --list
+
+build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    rm -rf out
+    mkdir -p out
+    javac -encoding UTF-8 -d out $(find src -name '*.java')
+
+task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build
+    java -cp out lab5.task1.Task1Main

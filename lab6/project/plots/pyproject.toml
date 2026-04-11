@@ -1,0 +1,23 @@
+[project]
+name = "lab6-plots"
+version = "0.1.0"
+description = "Lab 6 MPI matrix multiply benchmark driver and plots (CSV → PNG)"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.8",
+  "numpy>=1.26",
+]
+
+[project.scripts]
+lab6-bench = "lab6_plots.benchmark:cli"
+lab6-plot = "lab6_plots.plot:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lab6_plots"]
+
+[tool.uv]
+package = true

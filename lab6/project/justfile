@@ -1,0 +1,94 @@
+set quiet
+
+root := justfile_directory()
+
+# Requires: Open MPI (mpicc, mpirun). macOS: brew install open-mpi
+
+default:
+    @echo "lab6:  just task1  — P2P demo (np=2)"
+    @echo "       just task2  — matrix multiply, blocking MPI (default np=4)"
+    @echo "       just task3  — matrix multiply, non-blocking MPI (default np=4)"
+    @echo "       just task4-bench — CSV benchmark (uv run lab6-bench in plots/)"
+    @echo "       just task4-plot — figures from results/lab6_bench.csv (uv run lab6-plot)"
+    @echo "       just print-c  — dump all src/*.c (=== path === + body, for report appendix)"
+    @echo "       just compile-commands — compile_commands.json for clangd (mpi.h)"
+    @just --list
+
+# Усі .c з src/ у вигляді === відносний/шлях.c === + вміст (як lab4 print-java)
+print-c:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash "{{ root }}/scripts/dump_lab6_c.sh"
+
+[private]
+build-task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task1_p2p src/task1_p2p.c
+
+[private]
+build-task2:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task2_mm_blocking src/task2_mm_blocking.c -lm
+
+[private]
+build-task3:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    mkdir -p bin
+    mpicc -O2 -Wall -Wextra -std=c11 -o bin/task3_mm_nonblocking src/task3_mm_nonblocking.c -lm
+
+task1:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build-task1
+    mpirun -np 2 ./bin/task1_p2p
+
+# Task 2: blocking matrix multiply. Optional: NRA NCA NCB. Optional env MP_PROCS for process count (default 4).
+task2 *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build-task2
+    np="${MP_PROCS:-4}"
+    mpirun -np "$np" ./bin/task2_mm_blocking {{ ARGS }}
+
+# Task 3: non-blocking matrix multiply (Isend/Irecv + Wait/Waitall). Optional: NRA NCA NCB. MP_PROCS (default 4).
+task3 *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    just build-task3
+    np="${MP_PROCS:-4}"
+    mpirun -np "$np" ./bin/task3_mm_nonblocking {{ ARGS }}
+
+# Task 4: write results/lab6_bench.csv (uv + pyproject in plots/). Default: N=100..1000 step 50, P=2..8, runs=10.
+# Override e.g. just task4-bench --n 100,200 --np 2,4 --runs 1 -q
+task4-bench *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/plots"
+    uv sync --quiet
+    uv run lab6-bench {{ ARGS }}
+
+# clangd / IDE: generate compile_commands.json (run once per machine or after Open MPI path changes)
+compile-commands:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    python3 scripts/gen_compile_commands.py
+
+# Task 4: plot results/lab6_bench.csv → heatmaps + slice PNGs under results/
+task4-plot *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/plots"
+    uv sync --quiet
+    uv run lab6-plot {{ ARGS }}

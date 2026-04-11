@@ -3,29 +3,40 @@
  * Master (rank 0) distributes row blocks of A and full B to workers; workers return blocks of C.
  * Based on LLNL "mpi_mm.c" (Blaise Barney); fixed typos from the lab handout; dynamic allocation.
  *
- * Usage: mpirun -np P ./task2_mm_blocking [NRA NCA NCB]
+ * Usage: mpirun -np P ./task2_mm_blocking [NRA NCA NCB] [--bench]
  *   Default dimensions: 62 x 15 and 15 x 7 (listing 1). Need P >= 2.
+ *   --bench: one CSV line to stdout; quiet (task 4 timing).
  */
 #include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MASTER 0
 #define TAG_FROM_MASTER 1
 #define TAG_FROM_WORKER 2
 
 static void usage(const char *prog) {
-    fprintf(stderr, "Usage: %s [NRA NCA NCB]\n", prog);
+    fprintf(stderr, "Usage: %s [NRA NCA NCB] [--bench]\n", prog);
     fprintf(stderr, "  Default: 62 15 7 (matrix A is NRA x NCA, B is NCA x NCB)\n");
+    fprintf(stderr, "  --bench: quiet; print one CSV line to stdout (variant, dims, procs, wall seconds)\n");
 }
 
 int main(int argc, char **argv) {
     int nra = 62;
     int nca = 15;
     int ncb = 7;
+    int bench = 0;
+    int eff_argc = argc;
+    if (eff_argc >= 2 && strcmp(argv[eff_argc - 1], "--bench") == 0) {
+        bench = 1;
+        eff_argc--;
+    }
 
-    if (argc == 4) {
+    if (eff_argc == 1) {
+        /* defaults */
+    } else if (eff_argc == 4) {
         nra = atoi(argv[1]);
         nca = atoi(argv[2]);
         ncb = atoi(argv[3]);
@@ -33,7 +44,7 @@ int main(int argc, char **argv) {
             usage(argv[0]);
             return 1;
         }
-    } else if (argc != 1) {
+    } else {
         usage(argv[0]);
         return 1;
     }
@@ -81,20 +92,25 @@ int main(int argc, char **argv) {
         int extra = nra % numworkers;
         int offset = 0;
 
-        printf(
-                "mpi_mm (blocking MPI): tasks=%d workers=%d | A[%d x %d] * B[%d x %d] => C[%d x %d]\n",
-                numtasks,
-                numworkers,
-                nra,
-                nca,
-                nca,
-                ncb,
-                nra,
-                ncb);
+        if (!bench) {
+            printf(
+                    "mpi_mm (blocking MPI): tasks=%d workers=%d | A[%d x %d] * B[%d x %d] => C[%d x %d]\n",
+                    numtasks,
+                    numworkers,
+                    nra,
+                    nca,
+                    nca,
+                    ncb,
+                    nra,
+                    ncb);
+        }
 
+        double t0 = MPI_Wtime();
         for (int dest = 1; dest <= numworkers; dest++) {
             int rows = (dest <= extra) ? averow + 1 : averow;
-            printf("Sending %d rows to task %d offset=%d\n", rows, dest, offset);
+            if (!bench) {
+                printf("Sending %d rows to task %d offset=%d\n", rows, dest, offset);
+            }
             MPI_Send(&offset, 1, MPI_INT, dest, TAG_FROM_MASTER, MPI_COMM_WORLD);
             MPI_Send(&rows, 1, MPI_INT, dest, TAG_FROM_MASTER, MPI_COMM_WORLD);
             MPI_Send(
@@ -122,7 +138,13 @@ int main(int argc, char **argv) {
                     TAG_FROM_WORKER,
                     MPI_COMM_WORLD,
                     &status);
-            printf("Received results from task %d\n", source);
+            if (!bench) {
+                printf("Received results from task %d\n", source);
+            }
+        }
+        double t1 = MPI_Wtime();
+        if (bench) {
+            printf("blocking,%d,%d,%d,%d,%.9f\n", nra, nca, ncb, numtasks, t1 - t0);
         }
 
         double expected = (double)nca * 100.0;
@@ -137,9 +159,13 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        printf("Verification: %s (each C[i,j] should be %.6f for fill 10)\n", ok ? "OK" : "FAIL", expected);
+        if (!bench) {
+            printf("Verification: %s (each C[i,j] should be %.6f for fill 10)\n", ok ? "OK" : "FAIL", expected);
+        } else if (!ok) {
+            fprintf(stderr, "Verification FAIL (bench mode)\n");
+        }
 
-        if (nra * ncb <= 400) {
+        if (!bench && nra * ncb <= 400) {
             printf("****\nResult matrix C:\n");
             for (int i = 0; i < nra; i++) {
                 for (int j = 0; j < ncb; j++) {
@@ -148,7 +174,7 @@ int main(int argc, char **argv) {
                 printf("\n");
             }
             printf("********\n");
-        } else {
+        } else if (!bench) {
             printf(
                     "C too large to print; sample C[0,0]=%.2f C[%d,%d]=%.2f\n",
                     c[0],
@@ -156,12 +182,15 @@ int main(int argc, char **argv) {
                     ncb - 1,
                     c[(size_t)(nra - 1) * (size_t)ncb + (size_t)(ncb - 1)]);
         }
-        printf("Done.\n");
+        if (!bench) {
+            printf("Done.\n");
+        }
 
         free(a);
         free(b);
         free(c);
     } else {
+        (void)bench;
         int offset;
         int rows;
         MPI_Status status;

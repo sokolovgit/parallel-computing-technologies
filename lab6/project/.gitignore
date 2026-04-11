@@ -1,3 +1,8 @@
 bin/
 *.o
 .DS_Store
+results/*.csv
+results/*.png
+compile_commands.json
+plots/.venv
+.cache/

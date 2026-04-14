@@ -1,0 +1,9 @@
+[project]
+name = "mpi"
+version = "0.1.0"
+description = "Python MPI using mpi4py"
+requires-python = ">=3.10"
+dependencies = [
+  "mpi4py>=4.0",
+  "numpy>=1.20",
+]

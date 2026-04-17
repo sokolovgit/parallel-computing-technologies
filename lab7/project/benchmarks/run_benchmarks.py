@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 from matrix_multiplication.registry import ALGOS
@@ -18,10 +19,21 @@ from plots.figures import plot_all
 
 # --- Hardcoded experiment (edit here only) ---
 # Full lab6-style sweep (slow): N_VALUES = list(range(100, 1001, 50)); NP_VALUES = list(range(2, 9)); RUNS = 10
-N_VALUES = [100, 200, 400, 600, 800]
-NP_VALUES = [2, 4, 6, 8]
+# Use flat lists of ints. You may also group as [[100,200],[300,400]] — see _as_sweep().
+N_VALUES = list(range(100, 1001, 50))
+NP_VALUES = list(range(2, 9))
 RUNS = 5
 MODES = list(ALGOS.keys())
+
+
+def _as_sweep(values: Sequence[int] | Sequence[Sequence[int]]) -> list[int]:
+    """Normalize sweep config: ``[1,2,3]`` or ``[[1,2,3]]`` / ``[[1,2],[3,4]]`` → flat ints."""
+    if not values:
+        return []
+    first = values[0]
+    if isinstance(first, (list, tuple)):
+        return [int(x) for group in values for x in group]
+    return [int(x) for x in values]
 
 
 def project_root() -> Path:
@@ -56,7 +68,9 @@ def run_one(mode: str, n: int, np_: int, cwd: Path) -> str:
             text=True,
         )
         if proc.returncode != 0:
-            sys.stderr.write(proc.stderr or proc.stdout or f"mpirun failed ({proc.returncode})\n")
+            sys.stderr.write(
+                proc.stderr or proc.stdout or f"mpirun failed ({proc.returncode})\n"
+            )
             raise subprocess.CalledProcessError(proc.returncode, proc.args)
         line = None
         for ln in proc.stdout.splitlines():
@@ -91,18 +105,23 @@ def main() -> int:
     out_csv = results_dir() / "lab7_bench.csv"
     out_dir = results_dir()
 
-    total = len(MODES) * len(NP_VALUES) * len(N_VALUES)
+    n_sweep = _as_sweep(N_VALUES)
+    np_sweep = _as_sweep(NP_VALUES)
+    total = len(MODES) * len(np_sweep) * len(n_sweep)
     done = 0
     lines: list[str] = []
-    print(f"lab7 bench: {total} configurations (modes x np x N)", flush=True)
+    print(
+        f"lab7 bench: {total} configurations (mode: {MODES}, np: {np_sweep}, N: {n_sweep})",
+        flush=True,
+    )
     for mode in MODES:
-        for np_ in NP_VALUES:
-            for n in N_VALUES:
+        for np_ in np_sweep:
+            for n in n_sweep:
                 done += 1
                 line = run_one(mode, n, np_, cwd)
                 lines.append(line)
-                if done % 20 == 0 or done == total:
-                    print(f"  progress {done}/{total}", flush=True)
+
+                print(f"  progress {done}/{total}", flush=True)
 
     write_csv(lines, out_csv)
     print(f"Wrote {out_csv}", flush=True)

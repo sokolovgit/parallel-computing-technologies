@@ -22,3 +22,14 @@ bench-plot:
     cd "{{ root }}"
     uv sync --quiet
     uv run python -m benchmarks.run_benchmarks
+
+print-code:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/src"
+    find . -type f -name '*.py' | sort | while read -r file; do
+        echo "=== $file ==="
+        cat "$file"
+        echo
+    done
+    

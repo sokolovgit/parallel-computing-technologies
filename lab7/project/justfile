@@ -1,0 +1,35 @@
+set quiet
+
+root := justfile_directory()
+
+# Two commands: demo (MPI correctness) and bench+plots (CSV + PNG in ../docs/results/).
+
+default:
+    @echo "lab7:  just demo       — mpirun -np 4, verify all algorithms (small N)"
+    @echo "       just bench-plot — hardcoded sweep → lab7/docs/results/*.csv + *.png"
+    @just --list
+
+demo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    uv sync --quiet
+    mpirun -np 4 uv run python -m benchmarks.demo
+
+bench-plot:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}"
+    uv sync --quiet
+    uv run python -m benchmarks.run_benchmarks
+
+print-code:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/src"
+    find . -type f -name '*.py' | sort | while read -r file; do
+        echo "=== $file ==="
+        cat "$file"
+        echo
+    done
+    

@@ -1,0 +1,45 @@
+# Lab8 Matrix Multiplication Server - Justfile
+
+root := justfile_directory()
+
+# Default: show available commands
+default:
+    @just --list
+
+# Start the Spring Boot server
+server:
+    mvn spring-boot:run
+
+# Run demo requests (both client and server endpoints)
+demo:
+    mvn exec:java -Dexec.mainClass="ua.kpi.lab8.benchmark.DemoRunner"
+
+# Run HTTP-based benchmark suite
+benchmark:
+    mvn exec:java -Dexec.mainClass="ua.kpi.lab8.benchmark.HttpBenchmarkRunner"
+
+# Run standalone benchmark (without HTTP server)
+benchmark-standalone:
+    mvn exec:java -Dexec.mainClass="ua.kpi.lab8.benchmark.BenchmarkRunner"
+
+# Compile the project
+build:
+    mvn clean compile
+
+# Package the application
+package:
+    mvn clean package
+
+# Clean build artifacts
+clean:
+    mvn clean
+
+print-code:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{ root }}/src"
+    find . -type f -name '*.java' | sort | while read -r file; do
+        echo "=== $file ==="
+        cat "$file"
+        echo
+    done
